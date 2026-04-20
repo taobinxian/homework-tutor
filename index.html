@@ -1,0 +1,3081 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+<title>学霸奇遇记 · 小学生智能辅导冒险</title>
+<style>
+/* ============== 主题变量 ============== */
+:root{
+  --c-bg1:#0f1227;--c-bg2:#1a1f4a;--c-bg3:#2d1f5a;
+  --c-panel:rgba(22,26,60,.82);--c-panel-solid:#1b204f;
+  --c-accent:#ffcf4b;--c-accent2:#ff7ac3;--c-good:#6cf0a1;--c-bad:#ff6b6b;
+  --c-text:#f3f4ff;--c-muted:#a9adda;--c-ink:#141644;
+  --grad-sky:linear-gradient(180deg,#2b1b6a 0%,#5e3fa6 50%,#ff9a8b 100%);
+  --grad-forest:linear-gradient(180deg,#0d3b2e,#2a7b5a 60%,#f3d37a);
+  --grad-desert:linear-gradient(180deg,#3b1f0d,#c26a2a 60%,#ffd68a);
+  --grad-ocean:linear-gradient(180deg,#06223f,#1f76b6 60%,#b7e3ff);
+  --grad-ice:linear-gradient(180deg,#0a2145,#4a8bd6 60%,#ecf8ff);
+  --grad-volcano:linear-gradient(180deg,#2c0510,#a7231a 60%,#ffca76);
+  --shadow-lg:0 18px 50px rgba(0,0,0,.45);--shadow-md:0 8px 24px rgba(0,0,0,.3);
+  --radius:18px;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0;height:100%;overflow:hidden}
+body{
+  font-family:"PingFang SC","Microsoft YaHei","HarmonyOS Sans",system-ui,sans-serif;
+  color:var(--c-text);background:#000;
+  user-select:none;-webkit-user-select:none;
+  font-size:16px;
+}
+button{font-family:inherit;color:inherit;cursor:pointer;border:none;background:none}
+input{font-family:inherit}
+/* ============== 应用容器 ============== */
+#app{
+  position:fixed;inset:0;
+  background:linear-gradient(180deg,var(--c-bg1),var(--c-bg2) 50%,var(--c-bg3));
+  overflow:hidden;
+}
+.screen{
+  position:absolute;inset:0;
+  opacity:0;pointer-events:none;
+  transition:opacity .45s ease;
+  display:flex;flex-direction:column;
+  overflow:hidden;
+}
+.screen.active{opacity:1;pointer-events:auto}
+/* ============== 星空背景 ============== */
+.stars-bg{position:absolute;inset:0;pointer-events:none;z-index:0;overflow:hidden}
+.stars-bg::before,.stars-bg::after{
+  content:"";position:absolute;inset:-50%;
+  background-image:
+    radial-gradient(1px 1px at 20% 30%,#fff,transparent),
+    radial-gradient(1px 1px at 80% 10%,#fff,transparent),
+    radial-gradient(2px 2px at 50% 60%,#ffd,transparent),
+    radial-gradient(1px 1px at 30% 80%,#fff,transparent),
+    radial-gradient(1px 1px at 70% 40%,#cdf,transparent),
+    radial-gradient(2px 2px at 10% 50%,#fff,transparent),
+    radial-gradient(1px 1px at 90% 70%,#fff,transparent);
+  background-size:350px 350px;
+  animation:twinkle 6s linear infinite;
+  opacity:.8;
+}
+.stars-bg::after{background-size:500px 500px;animation-duration:9s;opacity:.5}
+@keyframes twinkle{from{transform:translateY(0)}to{transform:translateY(-40px)}}
+/* ============== 顶部状态栏 ============== */
+.hud{
+  position:absolute;top:0;left:0;right:0;
+  display:flex;align-items:center;gap:10px;
+  padding:10px 14px 10px;
+  padding-top:calc(env(safe-area-inset-top,0px) + 10px);
+  z-index:30;
+  background:linear-gradient(180deg,rgba(15,18,39,.92) 60%,rgba(15,18,39,0));
+  pointer-events:none;
+}
+.hud>*{pointer-events:auto}
+.hud-btn{
+  width:42px;height:42px;border-radius:14px;
+  background:var(--c-panel);backdrop-filter:blur(6px);
+  display:grid;place-items:center;font-size:20px;
+  border:1px solid rgba(255,255,255,.1);box-shadow:var(--shadow-md);
+}
+.hud-stat{
+  display:flex;align-items:center;gap:6px;
+  background:var(--c-panel);backdrop-filter:blur(6px);
+  padding:8px 12px;border-radius:14px;
+  border:1px solid rgba(255,255,255,.1);
+  font-weight:600;font-size:14px;
+}
+.hud-stat .icon{font-size:18px}
+.hud-stat.gold{color:var(--c-accent)}
+.hud-stat.gem{color:#9ad6ff}
+.hud-stat.xp{color:var(--c-good)}
+.hud-spacer{flex:1}
+/* ============== 通用按钮 ============== */
+.btn{
+  padding:14px 24px;border-radius:16px;
+  font-size:16px;font-weight:700;letter-spacing:1px;
+  background:linear-gradient(180deg,#ffd972,#ff9f3b);
+  color:#3b2104;box-shadow:0 6px 0 #a05e00,0 10px 24px rgba(0,0,0,.35);
+  transform:translateY(0);transition:transform .08s,box-shadow .08s;
+  border:2px solid rgba(255,255,255,.4);
+}
+.btn:active{transform:translateY(3px);box-shadow:0 3px 0 #a05e00,0 4px 10px rgba(0,0,0,.35)}
+.btn.ghost{
+  background:rgba(255,255,255,.08);color:#fff;
+  box-shadow:0 4px 0 rgba(0,0,0,.3);
+  border:1px solid rgba(255,255,255,.25);
+}
+.btn.ghost:active{box-shadow:0 1px 0 rgba(0,0,0,.3)}
+.btn.success{background:linear-gradient(180deg,#7ff5a9,#39c375);color:#0a3619;box-shadow:0 6px 0 #1e6b3a,0 10px 24px rgba(0,0,0,.35)}
+.btn.danger{background:linear-gradient(180deg,#ff9b9b,#ff5a5a);color:#3b0b0b;box-shadow:0 6px 0 #8a1f1f,0 10px 24px rgba(0,0,0,.35)}
+.btn.small{padding:8px 14px;font-size:13px;border-radius:12px;box-shadow:0 3px 0 rgba(0,0,0,.35)}
+.btn.block{width:100%}
+/* ============== 开始界面 ============== */
+#start{overflow-y:auto !important;overflow-x:hidden;-webkit-overflow-scrolling:touch}
+#start .title-wrap{
+  display:flex;flex-direction:column;align-items:center;
+  padding:40px 24px 60px;
+  padding-top:calc(env(safe-area-inset-top,0px) + 40px);
+  padding-bottom:calc(env(safe-area-inset-bottom,0px) + 60px);
+  text-align:center;position:relative;z-index:2;
+  min-height:100%;box-sizing:border-box;
+  justify-content:safe center;
+}
+.logo{
+  font-size:54px;font-weight:900;letter-spacing:4px;
+  background:linear-gradient(180deg,#fff,#ffcf4b 55%,#ff7ac3);
+  -webkit-background-clip:text;background-clip:text;color:transparent;
+  text-shadow:0 0 30px rgba(255,207,75,.35);
+  margin:0 0 6px;
+  animation:floaty 3s ease-in-out infinite;
+}
+.logo-sub{color:#dcdff7;font-size:14px;letter-spacing:8px;margin-bottom:28px}
+@keyframes floaty{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
+.hero-mascot{
+  font-size:90px;margin:10px 0 26px;
+  filter:drop-shadow(0 12px 20px rgba(255,207,75,.55));
+  animation:bob 2.5s ease-in-out infinite;
+}
+@keyframes bob{0%,100%{transform:translateY(0) rotate(-3deg)}50%{transform:translateY(-10px) rotate(3deg)}}
+.start-card{
+  background:var(--c-panel);border:1px solid rgba(255,255,255,.1);
+  border-radius:var(--radius);padding:20px;margin-top:10px;
+  width:min(92vw,420px);box-shadow:var(--shadow-lg);
+}
+.start-card label{display:block;font-size:13px;color:var(--c-muted);margin-bottom:8px}
+.start-card input[type=text]{
+  width:100%;padding:12px 14px;border-radius:12px;
+  border:1px solid rgba(255,255,255,.15);background:rgba(0,0,0,.25);
+  color:#fff;font-size:16px;margin-bottom:14px;
+}
+.avatar-row{display:flex;gap:10px;justify-content:center;margin-bottom:14px;flex-wrap:wrap}
+.avatar-opt{
+  width:56px;height:56px;border-radius:50%;
+  background:rgba(255,255,255,.08);
+  display:grid;place-items:center;font-size:32px;
+  border:2px solid transparent;cursor:pointer;transition:.2s;
+}
+.avatar-opt.selected{border-color:var(--c-accent);background:rgba(255,207,75,.15);transform:scale(1.08)}
+.grade-row{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px}
+.grade-opt{
+  padding:10px 0;border-radius:10px;text-align:center;
+  background:rgba(255,255,255,.06);border:2px solid transparent;
+  font-size:13px;transition:.15s;cursor:pointer;
+}
+.grade-opt.selected{background:rgba(255,207,75,.18);border-color:var(--c-accent);color:var(--c-accent)}
+/* ============== 世界地图 ============== */
+#map{background:var(--grad-sky);overflow:hidden}
+.map-title{
+  text-align:center;z-index:5;flex-shrink:0;
+  font-size:22px;font-weight:900;letter-spacing:4px;
+  text-shadow:0 3px 8px rgba(0,0,0,.4);
+  padding:68px 0 8px;
+  padding:calc(env(safe-area-inset-top,0px) + 68px) 0 8px;
+}
+.map-canvas{
+  padding:10px 20px 100px;
+  display:flex;flex-direction:column;gap:14px;
+  position:relative;z-index:2;
+  overflow-y:auto;flex:1;-webkit-overflow-scrolling:touch;
+}
+.continent{
+  position:relative;
+  background:var(--c-panel);backdrop-filter:blur(6px);
+  border:1px solid rgba(255,255,255,.1);
+  border-radius:22px;padding:14px 16px;
+  display:flex;align-items:center;gap:14px;
+  box-shadow:var(--shadow-md);
+  cursor:pointer;transition:transform .15s;
+}
+.continent:active{transform:scale(.98)}
+.continent.locked{opacity:.55;filter:grayscale(.7)}
+.continent .icon{
+  width:60px;height:60px;border-radius:50%;
+  display:grid;place-items:center;font-size:34px;flex-shrink:0;
+  box-shadow:inset 0 -6px 0 rgba(0,0,0,.2);
+}
+.continent .info{flex:1;min-width:0}
+.continent .name{font-size:17px;font-weight:800;margin:0 0 3px}
+.continent .desc{font-size:12px;color:var(--c-muted);margin:0 0 6px}
+.continent .progress{
+  height:6px;background:rgba(0,0,0,.3);border-radius:10px;overflow:hidden;
+}
+.continent .progress>div{
+  height:100%;background:linear-gradient(90deg,#ffd972,#ff7ac3);
+  border-radius:10px;transition:width .4s;
+}
+.continent .chev{font-size:24px;color:var(--c-muted)}
+.bottom-nav{
+  position:absolute;left:12px;right:12px;bottom:calc(env(safe-area-inset-bottom,0px) + 10px);z-index:20;
+  background:var(--c-panel);backdrop-filter:blur(10px);
+  border:1px solid rgba(255,255,255,.08);
+  border-radius:22px;padding:8px;
+  display:grid;grid-template-columns:repeat(5,1fr);gap:2px;
+  box-shadow:var(--shadow-lg);
+}
+.nav-item{
+  padding:10px 0;border-radius:14px;text-align:center;
+  font-size:11px;color:var(--c-muted);
+  display:flex;flex-direction:column;align-items:center;gap:2px;
+  transition:.2s;cursor:pointer;
+}
+.nav-item .ic{font-size:20px}
+.nav-item.active{background:rgba(255,207,75,.15);color:var(--c-accent)}
+/* ============== 大陆内副本选择 ============== */
+#region{background:var(--grad-forest)}
+.region-bg{position:absolute;inset:0;opacity:.5;z-index:0;pointer-events:none}
+.back-btn{
+  position:absolute;top:calc(env(safe-area-inset-top,20px) + 8px);left:14px;z-index:46;
+  width:42px;height:42px;border-radius:14px;
+  background:var(--c-panel);backdrop-filter:blur(6px);
+  display:grid;place-items:center;font-size:22px;
+  border:1px solid rgba(255,255,255,.1);
+}
+.region-header{
+  padding:70px 20px 10px;text-align:center;position:relative;z-index:2;
+}
+.region-header h2{font-size:24px;margin:0 0 4px;letter-spacing:3px;text-shadow:0 3px 8px rgba(0,0,0,.5)}
+.region-header p{color:rgba(255,255,255,.85);margin:0;font-size:13px}
+.dungeon-grid{
+  flex:1;padding:20px;display:flex;flex-direction:column;gap:14px;
+  position:relative;z-index:2;overflow-y:auto;
+}
+.dungeon{
+  background:var(--c-panel);backdrop-filter:blur(6px);
+  border:1px solid rgba(255,255,255,.12);
+  border-radius:22px;padding:18px;
+  display:flex;align-items:center;gap:16px;
+  box-shadow:var(--shadow-md);cursor:pointer;transition:transform .1s;
+}
+.dungeon:active{transform:scale(.98)}
+.dungeon.locked{opacity:.55;filter:grayscale(.6)}
+.dungeon .icon{
+  width:72px;height:72px;border-radius:20px;
+  display:grid;place-items:center;font-size:40px;flex-shrink:0;
+  box-shadow:inset 0 -6px 0 rgba(0,0,0,.2);
+}
+.dungeon .icon.math{background:linear-gradient(180deg,#7fb8ff,#3b6fd6)}
+.dungeon .icon.chinese{background:linear-gradient(180deg,#ff9f9f,#d64c4c)}
+.dungeon .icon.english{background:linear-gradient(180deg,#9bec9b,#39a939)}
+.dungeon .info{flex:1}
+.dungeon .info h3{font-size:18px;margin:0 0 4px}
+.dungeon .info p{font-size:12px;color:var(--c-muted);margin:0 0 6px}
+.star-strip{display:flex;gap:4px;font-size:14px}
+.star-strip .s{filter:grayscale(1);opacity:.4}
+.star-strip .s.on{filter:none;opacity:1;animation:pop .4s ease}
+@keyframes pop{0%{transform:scale(.2)}60%{transform:scale(1.3)}100%{transform:scale(1)}}
+/* ============== 战斗场景 ============== */
+#battle{background:var(--grad-sky)}
+.battle-scene{
+  position:absolute;inset:0;display:flex;flex-direction:column;z-index:2;
+}
+.battle-top{
+  padding:20px 16px 6px;
+  padding-top:calc(env(safe-area-inset-top,0px) + 20px);
+  display:flex;align-items:center;gap:12px;
+  flex-shrink:0;
+}
+.battle-body{
+  flex:1;display:flex;flex-direction:column;min-height:0;overflow:visible;
+}
+.battle-left{
+  flex:0 0 auto;display:flex;align-items:center;justify-content:center;
+  position:relative;min-height:80px;max-height:25vh;
+  overflow:visible;padding-top:30px;
+}
+.battle-right{
+  flex:1;display:flex;flex-direction:column;overflow:hidden;min-height:0;
+}
+.prog-bar{
+  flex:1;height:12px;background:rgba(0,0,0,.35);
+  border-radius:10px;overflow:hidden;position:relative;
+  border:1px solid rgba(255,255,255,.15);
+  display:flex;gap:2px;padding:2px;
+}
+.prog-dot{
+  flex:1;height:100%;border-radius:4px;background:rgba(255,255,255,.15);transition:background .3s;
+}
+.prog-dot.correct{background:linear-gradient(90deg,#6cf0a1,#3acb82)}
+.prog-dot.wrong{background:linear-gradient(90deg,#ff6b6b,#ff3d3d)}
+.prog-dot.current{background:rgba(255,207,75,.5);animation:progPulse 1s ease infinite}
+@keyframes progPulse{0%,100%{opacity:1}50%{opacity:.5}}
+.prog-label{font-size:12px;color:#fff;font-weight:700;min-width:40px;text-align:right}
+.arena{
+  flex:1;position:relative;
+  display:flex;align-items:center;justify-content:center;
+  overflow:visible;
+}
+.monster{
+  font-size:min(80px,12vh);filter:drop-shadow(0 8px 14px rgba(0,0,0,.45));
+  animation:hover 2.2s ease-in-out infinite;
+  transition:transform .3s, filter .3s;
+  position:relative;
+}
+.monster.hit{animation:monsterHit .5s ease;}
+.monster.dying{animation:die 0.8s ease forwards}
+@keyframes hover{0%,100%{transform:translateY(0)}50%{transform:translateY(-14px)}}
+@keyframes monsterHit{
+  0%{transform:translateX(0) scale(1);filter:drop-shadow(0 12px 20px rgba(0,0,0,.45))}
+  15%{transform:translateX(20px) scale(1.1);filter:drop-shadow(0 0 30px #ff0) brightness(1.8)}
+  30%{transform:translateX(-15px) scale(.9) rotate(-10deg);filter:drop-shadow(0 0 25px red) brightness(1.3)}
+  50%{transform:translateX(10px) rotate(5deg);filter:drop-shadow(0 0 15px orange)}
+  70%{transform:translateX(-5px)}
+  100%{transform:translateX(0) scale(1);filter:drop-shadow(0 12px 20px rgba(0,0,0,.45))}
+}
+@keyframes die{
+  0%{transform:scale(1) rotate(0);opacity:1;filter:brightness(1)}
+  30%{transform:scale(1.3) rotate(-10deg);filter:brightness(2) drop-shadow(0 0 40px #fff)}
+  60%{transform:scale(.6) rotate(30deg);opacity:.6;filter:brightness(.5)}
+  100%{transform:scale(0) rotate(180deg);opacity:0}
+}
+.monster-hp{
+  position:absolute;top:-30px;left:50%;transform:translateX(-50%);
+  width:160px;height:10px;background:rgba(0,0,0,.5);border-radius:8px;overflow:hidden;
+  border:1px solid rgba(255,255,255,.2);
+}
+.monster-hp>div{height:100%;background:linear-gradient(90deg,#ff6b6b,#ff3d3d);transition:width .4s}
+.monster-hp.low>div{background:linear-gradient(90deg,#ff3d3d,#ff0000);animation:hpPulse .6s ease infinite}
+@keyframes hpPulse{0%,100%{opacity:1}50%{opacity:.5}}
+.monster-name{
+  position:absolute;top:-55px;left:50%;transform:translateX(-50%);
+  font-size:13px;color:#fff;background:rgba(0,0,0,.4);padding:3px 10px;border-radius:10px;white-space:nowrap;
+}
+/* 玩家角色 */
+.player-wrap{
+  position:absolute;bottom:10px;left:20px;z-index:3;
+  display:flex;flex-direction:column;align-items:center;gap:4px;
+  transform:scaleX(-1);
+}
+.player-wrap>*:not(.player-char){transform:scaleX(-1)}
+.player-char{
+  font-size:min(45px,8vh);
+  filter:drop-shadow(0 6px 12px rgba(0,0,0,.4));
+  animation:playerIdle 1.8s ease-in-out infinite;
+  transition:transform .3s;
+}
+.player-name{font-size:11px;color:#fff;background:rgba(0,0,0,.4);padding:2px 8px;border-radius:8px;white-space:nowrap}
+.player-hp{
+  width:80px;height:8px;background:rgba(0,0,0,.5);border-radius:6px;overflow:hidden;
+  border:1px solid rgba(255,255,255,.2);
+}
+.player-hp>div{height:100%;background:linear-gradient(90deg,#6cf0a1,#3acb82);transition:width .4s;border-radius:6px}
+.player-hp.danger>div{background:linear-gradient(90deg,#ff6b6b,#ff3d3d);animation:hpPulse .6s ease infinite}
+@keyframes playerIdle{0%,100%{transform:translateY(0) scale(1)}50%{transform:translateY(-6px) scale(1.03)}}
+.player-char.attacking{animation:playerAttack .5s ease forwards !important}
+@keyframes playerAttack{
+  0%{transform:translateX(0) scale(1)}
+  40%{transform:translateX(calc(50vw - 80px)) scale(1.3) rotate(-15deg)}
+  60%{transform:translateX(calc(50vw - 80px)) scale(1.4)}
+  100%{transform:translateX(0) scale(1)}
+}
+.player-char.hurt{animation:playerHurt .5s ease !important}
+@keyframes playerHurt{
+  0%{transform:translateX(0)}
+  20%{transform:translateX(-20px) rotate(10deg);filter:drop-shadow(0 0 15px red) brightness(.6)}
+  50%{transform:translateX(10px)}
+  100%{transform:translateX(0);filter:drop-shadow(0 6px 12px rgba(0,0,0,.4))}
+}
+/* 连击 combo */
+.combo-display{
+  position:absolute;top:50%;right:20px;transform:translateY(-50%);
+  font-size:28px;font-weight:900;color:#ffcf4b;
+  text-shadow:0 0 15px rgba(255,207,75,.8),0 2px 4px rgba(0,0,0,.5);
+  opacity:0;transition:opacity .3s;z-index:10;
+  pointer-events:none;
+}
+.combo-display.show{opacity:1;animation:comboPop .4s ease}
+.combo-display.mega{font-size:36px;color:#ff7ac3;text-shadow:0 0 25px rgba(255,122,195,.9),0 2px 4px rgba(0,0,0,.6)}
+@keyframes comboPop{0%{transform:translateY(-50%) scale(.3)}50%{transform:translateY(-50%) scale(1.3)}100%{transform:translateY(-50%) scale(1)}}
+/* 伤害数字 */
+.dmg-number{
+  position:absolute;pointer-events:none;z-index:70;
+  font-size:32px;font-weight:900;color:#ff3d3d;
+  text-shadow:0 0 10px rgba(255,0,0,.6),0 2px 3px rgba(0,0,0,.5);
+  animation:dmgFloat 1s ease forwards;
+}
+.dmg-number.crit{font-size:44px;color:#ffcf4b;text-shadow:0 0 20px rgba(255,207,75,.8)}
+@keyframes dmgFloat{
+  0%{transform:translateY(0) scale(.5);opacity:0}
+  20%{transform:translateY(-20px) scale(1.2);opacity:1}
+  100%{transform:translateY(-100px) scale(.8);opacity:0}
+}
+/* 屏幕震动 */
+.screen-shake{animation:screenShake .3s ease}
+@keyframes screenShake{
+  0%,100%{transform:translate(0)}
+  10%{transform:translate(-4px,-3px)}
+  30%{transform:translate(4px,2px)}
+  50%{transform:translate(-3px,4px)}
+  70%{transform:translate(3px,-2px)}
+  90%{transform:translate(-2px,3px)}
+}
+/* 能量弹（玩家 → Boss） */
+.projectile{
+  position:fixed;pointer-events:none;z-index:68;
+  width:28px;height:28px;border-radius:50%;
+  background:radial-gradient(circle,#fff 0%,#ffcf4b 40%,#ff7a00 100%);
+  box-shadow:0 0 18px 6px rgba(255,207,75,.7),0 0 40px 10px rgba(255,150,0,.4);
+  transition:none;
+}
+.projectile.mega{
+  width:40px;height:40px;
+  background:radial-gradient(circle,#fff 0%,#ff7ac3 30%,#a855f7 70%,#6d28d9 100%);
+  box-shadow:0 0 25px 8px rgba(168,85,247,.7),0 0 50px 15px rgba(109,40,217,.4);
+}
+.projectile-trail{
+  position:fixed;pointer-events:none;z-index:67;
+  width:12px;height:12px;border-radius:50%;
+  background:rgba(255,207,75,.5);
+  animation:trailFade .3s ease forwards;
+}
+.projectile-trail.mega{background:rgba(168,85,247,.5)}
+@keyframes trailFade{0%{transform:scale(1);opacity:.6}100%{transform:scale(0);opacity:0}}
+/* 命中爆炸 */
+.impact-fx{
+  position:fixed;pointer-events:none;z-index:69;
+  width:0;height:0;border-radius:50%;
+  background:radial-gradient(circle,rgba(255,255,255,.9) 0%,rgba(255,207,75,.6) 30%,rgba(255,100,0,.3) 60%,transparent 100%);
+  animation:impactBlast .5s ease forwards;
+}
+.impact-fx.mega{
+  background:radial-gradient(circle,rgba(255,255,255,1) 0%,rgba(168,85,247,.7) 30%,rgba(109,40,217,.3) 60%,transparent 100%);
+  animation:impactBlast .6s ease forwards;
+}
+@keyframes impactBlast{
+  0%{width:0;height:0;opacity:1;transform:translate(-50%,-50%)}
+  40%{width:160px;height:160px;opacity:.9}
+  100%{width:220px;height:220px;opacity:0;transform:translate(-50%,-50%)}
+}
+/* Boss 攻击弹（Boss → 玩家） */
+.boss-bullet{
+  position:fixed;pointer-events:none;z-index:68;
+  width:24px;height:24px;border-radius:50%;
+  background:radial-gradient(circle,#fff 0%,#ff3d3d 50%,#8b0000 100%);
+  box-shadow:0 0 15px 5px rgba(255,61,61,.6),0 0 30px 8px rgba(139,0,0,.3);
+}
+.boss-bullet-trail{
+  position:fixed;pointer-events:none;z-index:67;
+  width:10px;height:10px;border-radius:50%;
+  background:rgba(255,61,61,.4);
+  animation:trailFade .25s ease forwards;
+}
+/* 屏幕红闪（答错） */
+.screen-red-flash::after{
+  content:'';position:fixed;inset:0;z-index:100;pointer-events:none;
+  background:radial-gradient(circle,transparent 30%,rgba(255,0,0,.3) 100%);
+  animation:redFlashOverlay .4s ease forwards;
+}
+@keyframes redFlashOverlay{0%{opacity:0}30%{opacity:1}100%{opacity:0}}
+/* 斩击特效 */
+.slash-fx{
+  position:absolute;pointer-events:none;z-index:65;
+  width:120px;height:120px;
+  background:radial-gradient(circle,rgba(255,207,75,.8) 0%,transparent 70%);
+  border-radius:50%;
+  animation:slashBurst .4s ease forwards;
+}
+@keyframes slashBurst{
+  0%{transform:scale(0);opacity:1}
+  50%{transform:scale(1.5);opacity:.8}
+  100%{transform:scale(2.5);opacity:0}
+}
+/* 蓄力光环 */
+.player-char.charging{animation:chargeGlow 1s ease-in-out infinite !important}
+@keyframes chargeGlow{
+  0%,100%{filter:drop-shadow(0 6px 12px rgba(0,0,0,.4))}
+  50%{filter:drop-shadow(0 0 20px rgba(255,207,75,.8)) brightness(1.2)}
+}
+.q-panel{
+  background:var(--c-panel);backdrop-filter:blur(8px);
+  border-top:1px solid rgba(255,255,255,.1);
+  padding:16px 16px 16px;
+  box-shadow:0 -10px 30px rgba(0,0,0,.35);
+  flex:1;display:flex;flex-direction:column;
+  overflow-y:auto;overflow-x:hidden;min-height:0;-webkit-overflow-scrolling:touch;
+}
+.q-topic{
+  display:inline-block;background:rgba(255,207,75,.18);color:var(--c-accent);
+  padding:4px 12px;border-radius:20px;font-size:12px;font-weight:700;
+  align-self:flex-start;margin-bottom:6px;flex-shrink:0;
+}
+.q-text{
+  font-size:20px;font-weight:700;line-height:1.5;margin:0 0 12px;
+  color:#fff;
+}
+.q-photo-area{display:none;flex-shrink:0}
+.q-photo-area.active{display:block;margin-bottom:6px}
+.q-photo{
+  width:100%;max-height:18vh;object-fit:contain;border-radius:10px;
+  border:2px solid rgba(255,255,255,.15);cursor:pointer;
+  background:rgba(0,0,0,.3);display:block;
+}
+.q-photo-hint{
+  font-size:10px;color:var(--c-muted);text-align:center;margin:2px 0 0;
+}
+.q-photo-full{
+  position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.85);
+  display:flex;align-items:center;justify-content:center;cursor:pointer;
+}
+.q-photo-full img{max-width:95vw;max-height:90vh;object-fit:contain;border-radius:8px}
+.q-img-desc{
+  font-size:11px;color:var(--c-accent);background:rgba(255,207,75,.1);
+  padding:4px 8px;border-radius:8px;margin-top:4px;line-height:1.4;
+  max-height:3em;overflow:hidden;
+}
+.q-options{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
+.opt{
+  padding:14px 10px;border-radius:14px;
+  background:rgba(255,255,255,.06);
+  border:2px solid rgba(255,255,255,.1);
+  font-size:16px;font-weight:600;text-align:center;
+  transition:.15s;
+}
+.opt:active{transform:scale(.97)}
+.opt.correct{background:rgba(108,240,161,.25);border-color:#6cf0a1;color:#d7fde4;animation:glowg .6s}
+.opt.wrong{background:rgba(255,107,107,.25);border-color:#ff6b6b;color:#ffdada;animation:shake .4s}
+@keyframes glowg{0%{box-shadow:0 0 0 rgba(108,240,161,0)}50%{box-shadow:0 0 30px rgba(108,240,161,.7)}}
+.q-input-wrap{display:flex;gap:8px;margin-bottom:10px}
+.q-input{
+  flex:1;padding:14px;border-radius:14px;
+  background:rgba(0,0,0,.3);border:2px solid rgba(255,255,255,.12);
+  color:#fff;font-size:18px;text-align:center;
+}
+.q-input:focus{outline:none;border-color:var(--c-accent)}
+.q-actions{display:flex;gap:8px;margin-top:auto}
+.q-actions .btn{flex:1}
+/* ============== AI 讲题弹窗 ============== */
+.modal-mask{
+  position:absolute;inset:0;background:rgba(0,0,0,.55);
+  z-index:50;display:flex;align-items:flex-end;justify-content:center;
+  opacity:0;pointer-events:none;transition:opacity .3s;
+}
+.modal-mask.show{opacity:1;pointer-events:auto}
+.modal{
+  width:100%;max-width:560px;
+  background:linear-gradient(180deg,#2a2e6a,#1a1f4a);
+  border-radius:28px 28px 0 0;
+  padding:16px 16px 24px;
+  border-top:2px solid rgba(255,255,255,.15);
+  box-shadow:0 -20px 60px rgba(0,0,0,.6);
+  transform:translateY(100%);transition:transform .35s cubic-bezier(.2,.9,.3,1);
+  max-height:88vh;overflow-y:auto;
+}
+.modal-mask.show .modal{transform:translateY(0)}
+.modal .handle{
+  width:48px;height:5px;background:rgba(255,255,255,.3);
+  border-radius:10px;margin:0 auto 14px;
+}
+.ai-head{display:flex;align-items:center;gap:12px;margin-bottom:14px}
+.ai-avatar{
+  width:56px;height:56px;border-radius:50%;
+  background:linear-gradient(180deg,#ffdf87,#ff9246);
+  display:grid;place-items:center;font-size:36px;
+  box-shadow:0 6px 20px rgba(255,146,70,.5);
+  animation:aiBob 2s ease-in-out infinite;
+  flex-shrink:0;
+}
+@keyframes aiBob{0%,100%{transform:translateY(0) rotate(-4deg)}50%{transform:translateY(-5px) rotate(4deg)}}
+.ai-name{font-weight:800;font-size:16px}
+.ai-role{font-size:12px;color:var(--c-muted)}
+.ai-bubble{
+  background:rgba(255,255,255,.06);
+  border:1px solid rgba(255,255,255,.1);
+  border-radius:18px;padding:14px 46px 14px 16px;
+  font-size:15px;line-height:1.7;margin-bottom:10px;
+  position:relative;cursor:pointer;
+}
+.ai-bubble .speak-btn{
+  position:absolute;top:10px;right:10px;
+  width:32px;height:32px;border-radius:50%;
+  background:linear-gradient(135deg,#ff7ac3,#ffcf4b);
+  display:grid;place-items:center;font-size:16px;
+  box-shadow:0 4px 10px rgba(255,122,195,.4);
+  border:1px solid rgba(255,255,255,.3);
+}
+.ai-bubble .speak-btn.playing{animation:pulse 1s ease-in-out infinite}
+.q-text-wrap{display:flex;align-items:flex-start;gap:8px;margin-bottom:12px}
+.q-text-wrap .q-text{margin:0;flex:1}
+.speak-q{
+  width:38px;height:38px;border-radius:50%;flex-shrink:0;
+  background:linear-gradient(135deg,#6cf0a1,#3acb82);
+  display:grid;place-items:center;font-size:18px;
+  box-shadow:0 4px 10px rgba(108,240,161,.4);color:#0a3619;
+  border:1px solid rgba(255,255,255,.3);
+}
+.speak-q.playing{animation:pulse 1s ease-in-out infinite}
+.voice-toggle{
+  position:absolute;top:14px;right:64px;z-index:40;
+  width:42px;height:42px;border-radius:14px;
+  background:var(--c-panel);backdrop-filter:blur(6px);
+  display:grid;place-items:center;font-size:20px;
+  border:1px solid rgba(255,255,255,.1);box-shadow:var(--shadow-md);
+}
+.voice-toggle.off{opacity:.5}
+.ai-bubble .step-label{
+  display:inline-block;background:linear-gradient(180deg,#ffcf4b,#ff9246);
+  color:#3b2104;padding:3px 10px;border-radius:10px;
+  font-weight:800;font-size:12px;margin-bottom:8px;
+}
+.ai-bubble.correct-final{border-color:rgba(108,240,161,.3);background:rgba(108,240,161,.08)}
+.typing-dot{display:inline-block;width:6px;height:6px;background:var(--c-muted);border-radius:50%;margin:0 2px;animation:dot 1.2s infinite}
+.typing-dot:nth-child(2){animation-delay:.15s}.typing-dot:nth-child(3){animation-delay:.3s}
+@keyframes dot{0%,60%,100%{transform:translateY(0);opacity:.3}30%{transform:translateY(-6px);opacity:1}}
+.ai-actions{display:flex;gap:8px;margin-top:14px}
+.ai-actions .btn{flex:1}
+/* ============== 胜利 / 失败 覆盖层 ============== */
+.overlay{
+  position:absolute;inset:0;background:rgba(0,0,0,.7);z-index:60;
+  display:flex;align-items:center;justify-content:center;
+  opacity:0;pointer-events:none;transition:opacity .3s;padding:20px;
+}
+.overlay.show{opacity:1;pointer-events:auto}
+.victory-card{
+  width:min(90vw,420px);
+  background:linear-gradient(180deg,#3a2d85,#241b5c);
+  border-radius:24px;padding:24px;text-align:center;
+  border:2px solid rgba(255,207,75,.5);
+  box-shadow:0 20px 60px rgba(0,0,0,.6),inset 0 0 40px rgba(255,207,75,.1);
+  transform:scale(.8);transition:transform .4s cubic-bezier(.2,1.3,.3,1);
+}
+.overlay.show .victory-card{transform:scale(1)}
+.victory-card h2{font-size:30px;margin:0 0 8px;letter-spacing:6px;background:linear-gradient(180deg,#fff,#ffcf4b);-webkit-background-clip:text;background-clip:text;color:transparent}
+.victory-card .mascot{font-size:90px;margin:6px 0 6px;animation:bob 2s ease-in-out infinite}
+.reward-row{display:flex;justify-content:center;gap:16px;margin:18px 0}
+.reward-item{display:flex;flex-direction:column;align-items:center;gap:4px}
+.reward-item .ic{font-size:36px;filter:drop-shadow(0 4px 10px rgba(255,207,75,.5))}
+.reward-item .n{font-weight:800;color:var(--c-accent);font-size:18px}
+.reward-item .l{font-size:11px;color:var(--c-muted)}
+.stars-reward{display:flex;justify-content:center;gap:10px;margin:10px 0}
+.stars-reward .star{
+  font-size:44px;filter:grayscale(1) brightness(.6);opacity:.4;
+  transition:.5s;
+}
+.stars-reward .star.lit{filter:none;opacity:1;animation:pop .6s ease .1s both;text-shadow:0 0 20px rgba(255,207,75,.8)}
+.stars-reward .star.lit:nth-child(2){animation-delay:.3s}
+.stars-reward .star.lit:nth-child(3){animation-delay:.5s}
+/* ============== 粒子飘散 ============== */
+.particle{
+  position:absolute;pointer-events:none;z-index:70;
+  font-size:24px;
+  animation:rise 1.4s ease forwards;
+}
+@keyframes rise{
+  0%{transform:translateY(0) scale(.5);opacity:0}
+  30%{opacity:1;transform:translateY(-30px) scale(1.2)}
+  100%{transform:translateY(-140px) scale(.6);opacity:0}
+}
+.confetti{
+  position:absolute;width:10px;height:14px;border-radius:2px;
+  top:-10px;animation:fall 2s linear forwards;z-index:65;pointer-events:none;
+}
+@keyframes fall{
+  0%{transform:translateY(0) rotate(0);opacity:1}
+  100%{transform:translateY(110vh) rotate(720deg);opacity:.8}
+}
+/* ============== 宠物 / 背包 / 商店 ============== */
+.page{
+  position:absolute;inset:0;z-index:45;
+  background:linear-gradient(180deg,#1a1f4a,#2d1f5a);
+  transform:translateY(100%);transition:transform .35s cubic-bezier(.2,.9,.3,1);
+  display:flex;flex-direction:column;
+  padding:0;
+  visibility:hidden;pointer-events:none;
+}
+.page.show{transform:translateY(0);visibility:visible;pointer-events:auto}
+.page-safe-top{
+  flex-shrink:0;
+  height:calc(env(safe-area-inset-top,20px) + 54px);
+  min-height:54px;
+}
+.page-header{padding:0 20px 12px;display:flex;align-items:center;gap:10px;flex-shrink:0}
+.page-header h2{font-size:22px;margin:0;letter-spacing:4px}
+.page-body{flex:1;padding:0 20px 20px;overflow-y:auto;-webkit-overflow-scrolling:touch;
+  padding-bottom:calc(env(safe-area-inset-bottom,0px) + 20px);
+}
+.pet-card{
+  background:var(--c-panel);border-radius:22px;padding:24px;
+  display:flex;flex-direction:column;align-items:center;gap:10px;
+  border:1px solid rgba(255,255,255,.1);margin-bottom:16px;
+}
+.pet-face{
+  width:140px;height:140px;border-radius:50%;
+  background:radial-gradient(circle at 30% 30%,#fff7d1,#ffc763 70%,#ff8b3b);
+  display:grid;place-items:center;font-size:80px;
+  box-shadow:0 10px 30px rgba(255,140,60,.4),inset 0 -10px 0 rgba(0,0,0,.1);
+  animation:bob 2.6s ease-in-out infinite;
+}
+.pet-name{font-size:18px;font-weight:800;margin:4px 0 0}
+.pet-lv{font-size:13px;color:var(--c-accent)}
+.pet-bar{
+  width:90%;height:10px;background:rgba(0,0,0,.3);border-radius:10px;overflow:hidden;
+  border:1px solid rgba(255,255,255,.15);margin-top:4px;
+}
+.pet-bar>div{height:100%;background:linear-gradient(90deg,#ffcf4b,#ff7ac3);transition:width .5s}
+.pet-caption{font-size:12px;color:var(--c-muted);margin-top:6px;text-align:center;line-height:1.5}
+.shop-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.shop-item{
+  background:var(--c-panel);border:1px solid rgba(255,255,255,.1);
+  border-radius:18px;padding:14px;text-align:center;
+}
+.shop-item .ic{font-size:42px;margin-bottom:6px;display:block}
+.shop-item .n{font-size:14px;font-weight:700;margin:2px 0}
+.shop-item .d{font-size:11px;color:var(--c-muted);margin-bottom:8px;min-height:30px}
+.shop-item .price{
+  background:linear-gradient(180deg,#ffd972,#ff9f3b);
+  color:#3b2104;padding:6px 10px;border-radius:12px;
+  font-size:13px;font-weight:800;display:inline-block;
+  box-shadow:0 3px 0 rgba(0,0,0,.2);
+}
+.shop-item.owned .price{background:rgba(255,255,255,.15);color:#fff;box-shadow:none}
+.achv-row{
+  display:flex;gap:12px;padding:14px;background:var(--c-panel);
+  border:1px solid rgba(255,255,255,.1);border-radius:18px;margin-bottom:10px;
+}
+.achv-row.done{border-color:rgba(255,207,75,.5);background:rgba(255,207,75,.08)}
+.achv-ic{font-size:38px;flex-shrink:0}
+.achv-body h4{margin:0;font-size:15px}
+.achv-body p{margin:3px 0 6px;font-size:12px;color:var(--c-muted)}
+.achv-prog{height:6px;background:rgba(0,0,0,.3);border-radius:8px;overflow:hidden;max-width:180px}
+.achv-prog>div{height:100%;background:linear-gradient(90deg,#ffcf4b,#ff7ac3)}
+.stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px}
+.stat-tile{
+  background:var(--c-panel);border:1px solid rgba(255,255,255,.1);
+  border-radius:16px;padding:14px;text-align:center;
+}
+.stat-tile .n{font-size:26px;font-weight:900;color:var(--c-accent)}
+.stat-tile .l{font-size:12px;color:var(--c-muted);margin-top:4px}
+/* ============== Toast ============== */
+.toast-wrap{position:absolute;top:70px;left:0;right:0;z-index:80;display:flex;flex-direction:column;align-items:center;gap:8px;pointer-events:none}
+.toast{
+  background:rgba(0,0,0,.75);backdrop-filter:blur(4px);
+  border:1px solid rgba(255,255,255,.15);color:#fff;
+  padding:10px 20px;border-radius:14px;font-size:14px;font-weight:600;
+  animation:toastIn .3s ease, toastOut .3s ease 1.7s forwards;
+}
+@keyframes toastIn{from{transform:translateY(-20px);opacity:0}to{transform:translateY(0);opacity:1}}
+@keyframes toastOut{to{transform:translateY(-20px);opacity:0}}
+/* ============== 护眼 / 休息提醒 ============== */
+.rest-overlay{
+  position:absolute;inset:0;background:rgba(15,18,39,.95);z-index:90;
+  display:none;flex-direction:column;align-items:center;justify-content:center;
+  padding:24px;text-align:center;
+}
+.rest-overlay.show{display:flex;animation:fadeIn .4s}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+.rest-overlay .big{font-size:80px;margin-bottom:20px;animation:bob 2s ease-in-out infinite}
+.rest-overlay h2{font-size:26px;margin:0 0 10px}
+.rest-overlay p{color:var(--c-muted);font-size:14px;margin:0 0 20px;max-width:300px;line-height:1.7}
+.rest-timer{font-size:40px;font-weight:900;color:var(--c-accent);margin:10px 0}
+/* 响应式 — 散落规则已移入下方统一响应式区块 */
+.hidden{display:none!important}
+/* ============== AI 拍照出题 ============== */
+#page-ai{background:linear-gradient(180deg,#0f1227,#241b5c)}
+.ai-hero{
+  text-align:center;padding:10px 20px 20px;
+  border-bottom:1px solid rgba(255,255,255,.08);
+}
+.ai-hero .ic{font-size:72px;filter:drop-shadow(0 10px 20px rgba(255,146,70,.4));animation:bob 2.4s ease-in-out infinite}
+.ai-hero h3{font-size:20px;margin:6px 0 4px;letter-spacing:2px}
+.ai-hero p{font-size:13px;color:var(--c-muted);margin:0;line-height:1.6}
+.upload-grid{
+  display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:18px 0 12px;
+}
+.upload-btn{
+  padding:22px 12px;border-radius:18px;text-align:center;
+  color:#fff;border:2px solid rgba(255,255,255,.15);
+  box-shadow:0 6px 0 rgba(0,0,0,.25),0 10px 24px rgba(0,0,0,.3);
+  transition:transform .08s,box-shadow .08s;
+  cursor:pointer;
+}
+.upload-btn:active{transform:translateY(3px);box-shadow:0 3px 0 rgba(0,0,0,.25)}
+.upload-btn.camera{background:linear-gradient(180deg,#ff9bc8,#e54c8f)}
+.upload-btn.file{background:linear-gradient(180deg,#7fd6ff,#3b8fd6)}
+.upload-btn .big{font-size:42px;display:block;margin-bottom:6px}
+.upload-btn .t{font-weight:800;font-size:16px;letter-spacing:2px}
+.upload-btn .d{font-size:11px;opacity:.85;margin-top:3px}
+.drop-zone{
+  margin:12px 0;padding:24px 20px;
+  border:2px dashed rgba(255,255,255,.2);border-radius:18px;
+  text-align:center;background:rgba(255,255,255,.03);transition:.2s;
+  cursor:pointer;
+}
+.drop-zone.active{border-color:var(--c-accent);background:rgba(255,207,75,.08)}
+.drop-zone .big{font-size:40px;display:block;margin-bottom:6px}
+.drop-zone .t{font-weight:700;margin-bottom:4px;font-size:14px}
+.drop-zone .d{font-size:12px;color:var(--c-muted);line-height:1.6}
+.pho-preview{
+  margin:16px 0;border-radius:18px;overflow:hidden;
+  max-height:280px;border:1px solid rgba(255,255,255,.1);
+  background:rgba(0,0,0,.3);display:flex;align-items:center;justify-content:center;
+}
+.pho-preview img{width:100%;max-height:280px;object-fit:contain;display:block}
+.progress-card{
+  background:var(--c-panel);border:1px solid rgba(255,255,255,.1);
+  border-radius:16px;padding:16px;margin:14px 0;
+}
+.progress-card .step{display:flex;gap:10px;align-items:flex-start;padding:6px 0;font-size:13px}
+.progress-card .step .s-ic{width:26px;flex-shrink:0;text-align:center}
+.progress-card .step.done{color:var(--c-good)}
+.progress-card .step.doing .s-ic{animation:spin 1s linear infinite;display:inline-block}
+@keyframes spin{to{transform:rotate(360deg)}}
+.progress-card .step.err{color:var(--c-bad)}
+.cfg-row{
+  background:var(--c-panel);padding:14px;border-radius:14px;
+  border:1px solid rgba(255,255,255,.08);margin-bottom:10px;
+}
+.cfg-row label{display:block;font-size:12px;color:var(--c-muted);margin-bottom:6px}
+.cfg-row input,.cfg-row select,.cfg-row textarea{
+  width:100%;padding:10px 12px;border-radius:10px;
+  border:1px solid rgba(255,255,255,.12);background:rgba(0,0,0,.3);
+  color:#fff;font-size:14px;font-family:inherit;resize:vertical;
+}
+.cfg-row input:focus,.cfg-row select:focus,.cfg-row textarea:focus{outline:none;border-color:var(--c-accent)}
+.preset-row{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:10px}
+.preset-opt{
+  padding:10px 8px;border-radius:10px;background:rgba(255,255,255,.05);
+  border:2px solid transparent;font-size:13px;text-align:center;cursor:pointer;
+}
+.preset-opt.selected{background:rgba(255,207,75,.15);border-color:var(--c-accent);color:var(--c-accent)}
+.preset-opt .sub{font-size:11px;color:var(--c-muted);margin-top:2px}
+.q-preview-item{
+  background:var(--c-panel);border:1px solid rgba(255,255,255,.1);
+  border-radius:14px;padding:12px;margin-bottom:8px;font-size:14px;
+}
+.q-preview-item .qq{font-weight:700;margin-bottom:6px}
+.q-preview-item .aa{color:var(--c-good);font-size:13px}
+.tip-box{
+  background:rgba(255,207,75,.1);border:1px solid rgba(255,207,75,.25);
+  color:#ffe9a7;padding:12px 14px;border-radius:14px;font-size:12px;line-height:1.7;margin:12px 0;
+}
+.fab-ai{
+  position:absolute;right:18px;bottom:90px;z-index:25;
+  width:58px;height:58px;border-radius:50%;
+  background:linear-gradient(135deg,#ff7ac3,#ffcf4b);
+  display:grid;place-items:center;font-size:26px;
+  box-shadow:0 8px 24px rgba(255,122,195,.5),0 0 0 0 rgba(255,207,75,.6);
+  animation:pulse 2.4s ease-in-out infinite;
+  border:2px solid rgba(255,255,255,.4);
+}
+@keyframes pulse{0%,100%{box-shadow:0 8px 24px rgba(255,122,195,.5),0 0 0 0 rgba(255,207,75,.6)}50%{box-shadow:0 8px 24px rgba(255,122,195,.5),0 0 0 12px rgba(255,207,75,0)}}
+/* ============== 自定义确认弹窗 ============== */
+.confirm-overlay{
+  position:absolute;inset:0;background:rgba(0,0,0,.65);z-index:100;
+  display:flex;align-items:center;justify-content:center;
+  opacity:0;pointer-events:none;transition:opacity .25s;padding:20px;
+}
+.confirm-overlay.show{opacity:1;pointer-events:auto}
+.confirm-card{
+  width:min(88vw,360px);
+  background:linear-gradient(180deg,#3a2d85,#241b5c);
+  border-radius:22px;padding:28px 24px;text-align:center;
+  border:1.5px solid rgba(255,255,255,.15);
+  box-shadow:0 20px 60px rgba(0,0,0,.6);
+  transform:scale(.85);transition:transform .3s cubic-bezier(.2,1.2,.3,1);
+}
+.confirm-overlay.show .confirm-card{transform:scale(1)}
+.confirm-card .confirm-icon{font-size:52px;margin-bottom:12px}
+.confirm-card .confirm-title{font-size:18px;font-weight:800;margin:0 0 8px}
+.confirm-card .confirm-msg{font-size:13px;color:var(--c-muted);margin:0 0 22px;line-height:1.6}
+.confirm-card .confirm-btns{display:flex;gap:10px}
+.confirm-card .confirm-btns .btn{flex:1;padding:12px;font-size:15px;font-weight:700;border-radius:14px}
+.confirm-card .btn-cancel{background:rgba(255,255,255,.1);color:var(--c-text)}
+.confirm-card .btn-danger{background:linear-gradient(180deg,#ff6b6b,#d44);color:#fff;box-shadow:0 4px 0 rgba(0,0,0,.2)}
+
+/* ==============================================================
+   响应式适配 — 三层断点，从大到小，互不干扰
+   桌面(默认) → 平板(≤768px) → 手机(≤480px) + 矮屏补丁
+   ============================================================== */
+
+/* ---------- 桌面增强 (≥1024px) ---------- */
+@media(min-width:1024px){
+  /* 首页 */
+  .start-card{width:min(75vw,500px);padding:30px}
+  .grade-row{grid-template-columns:repeat(6,1fr)}
+
+  /* 世界地图 — 双列网格 */
+  .map-canvas{padding:10px 40px 100px;display:grid;grid-template-columns:repeat(2,1fr);gap:16px;max-width:960px;margin:0 auto;align-content:start}
+  .continent{max-width:none;margin:0}
+
+  /* 副本选择 — 双列网格 */
+  .region-header{padding:80px 20px 14px}
+  .dungeon-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:16px;max-width:960px;margin:0 auto;align-content:start;padding:20px 40px 100px}
+  .dungeon{max-width:none;margin:0}
+
+  /* 战斗 — 左右分栏 */
+  .battle-body{flex-direction:row}
+  .battle-left{flex:0 0 40%;max-height:none;min-height:auto;padding-top:40px}
+  .battle-right{flex:1}
+  .q-panel{max-width:none;margin:0;border-radius:18px 18px 0 0}
+  .q-options{max-width:560px}
+  .arena{transform:scale(1.1)}
+
+  /* 胜利 / 失败 */
+  .victory-card{padding:32px;max-width:480px}
+
+  /* 弹窗 */
+  .modal{max-width:620px}
+
+  /* 子页面(宠物/商店/错题/成就/设置) — 居中放宽 */
+  .page{align-items:center}
+  .page-safe-top{width:100%}
+  .page-body{max-width:900px;width:100%;padding:0 40px 20px}
+  .page-header{max-width:900px;width:100%;padding:0 40px 12px}
+  .back-btn{align-self:flex-start}
+
+  /* 商店 — 桌面端 3 列 */
+  .shop-grid{grid-template-columns:repeat(3,1fr);gap:14px}
+
+  /* 底部导航 — 居中限宽 */
+  .bottom-nav{left:50%;right:auto;transform:translateX(-50%);width:calc(100% - 40px);max-width:600px}
+}
+
+/* ---------- 平板 (769px ~ 1023px) ---------- */
+@media(min-width:769px) and (max-width:1023px){
+  .start-card{width:min(80vw,480px);padding:28px}
+  .grade-row{grid-template-columns:repeat(6,1fr)}
+
+  /* 世界地图 — 双列 */
+  .map-canvas{padding:10px 30px 100px;display:grid;grid-template-columns:repeat(2,1fr);gap:14px;max-width:800px;margin:0 auto;align-content:start}
+  .continent{max-width:none;margin:0}
+
+  /* 副本选择 — 双列 */
+  .dungeon-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;max-width:800px;margin:0 auto;align-content:start;padding:20px 30px 100px}
+  .dungeon{max-width:none;margin:0}
+
+  .q-options{max-width:500px}
+  .victory-card{padding:28px}
+  .modal{max-width:600px}
+
+  /* 子页面居中 */
+  .page{align-items:center}
+  .page-safe-top{width:100%}
+  .page-body{max-width:700px;width:100%;padding:0 30px 20px}
+  .page-header{max-width:700px;width:100%;padding:0 30px 12px}
+  .back-btn{align-self:flex-start}
+  .shop-grid{grid-template-columns:repeat(3,1fr);gap:12px}
+
+  /* 底部导航 — 居中限宽 */
+  .bottom-nav{left:50%;right:auto;transform:translateX(-50%);width:calc(100% - 30px);max-width:600px}
+}
+
+/* ---------- 小平板 / 大手机 (481px ~ 768px) ---------- */
+@media(min-width:481px) and (max-width:768px){
+  .logo{font-size:44px}
+  .hero-mascot{font-size:76px;margin:8px 0 18px}
+  .start-card{width:min(88vw,440px);padding:22px}
+  .grade-row{grid-template-columns:repeat(3,1fr);gap:8px}
+  .map-canvas{padding:10px 30px 100px}
+  .continent{max-width:520px;margin:0 auto}
+  .dungeon{max-width:520px;margin:0 auto}
+  .q-text{font-size:18px}
+  .opt{padding:12px 10px;font-size:15px}
+  .q-panel{padding:14px 16px 14px}
+  .modal{max-width:500px}
+  .nav-item{font-size:11px}
+  .nav-item .ic{font-size:19px}
+}
+
+/* ---------- 手机 (≤480px) ---------- */
+@media(max-width:480px){
+  /* 首页 */
+  .logo{font-size:34px}
+  .hero-mascot{font-size:56px;margin:4px 0 12px}
+  .logo-sub{font-size:11px;letter-spacing:3px;margin-bottom:14px}
+  .start-card{padding:14px;width:min(94vw,380px)}
+  .grade-row{grid-template-columns:repeat(3,1fr);gap:5px}
+  .grade-opt{padding:8px 0;font-size:12px}
+  .avatar-opt{width:42px;height:42px;font-size:24px}
+
+  /* 顶部状态栏 */
+  .hud{padding:8px 10px 8px;padding-top:calc(env(safe-area-inset-top,0px) + 6px);gap:6px}
+  .hud-btn{width:34px;height:34px;font-size:15px;border-radius:10px}
+  .hud-stat{padding:5px 7px;font-size:11px;border-radius:10px;gap:4px}
+  .hud-stat .icon{font-size:15px}
+
+  /* 地图 */
+  .map-title{font-size:18px;letter-spacing:2px;padding:54px 0 6px;padding-top:calc(env(safe-area-inset-top,0px) + 54px)}
+  .map-canvas{padding:8px 14px 90px}
+  .continent{padding:10px 12px;gap:10px;border-radius:16px}
+  .continent .icon{width:46px;height:46px;font-size:26px}
+  .continent .name{font-size:14px}
+  .continent .desc{font-size:11px}
+
+  /* 底部导航 */
+  .bottom-nav{left:8px;right:8px;bottom:calc(env(safe-area-inset-bottom,0px) + 6px);padding:6px;border-radius:18px}
+  .nav-item{padding:7px 0;font-size:10px;gap:1px}
+  .nav-item .ic{font-size:17px}
+
+  /* 副本选择 */
+  .dungeon{padding:12px;gap:10px;border-radius:14px}
+  .dungeon .icon{width:50px;height:50px;font-size:28px;border-radius:12px}
+  .dungeon .info h3{font-size:14px}
+  .dungeon .info p{font-size:11px}
+  .region-header{padding:60px 16px 8px}
+  .region-header h2{font-size:20px}
+
+  /* 战斗区 */
+  .battle-top{padding:calc(env(safe-area-inset-top,8px) + 10px) 12px 4px}
+  .battle-left{max-height:22vh;min-height:70px;padding-top:28px}
+  .monster{font-size:min(60px,10vh)}
+  .monster-hp{width:110px;height:8px;top:-24px}
+  .monster-name{font-size:11px;top:-44px;padding:2px 8px}
+  .player-char{font-size:min(36px,7vh)}
+  .player-hp{width:56px;height:6px}
+  .player-name{font-size:10px}
+  .combo-display{font-size:22px;right:12px}
+  .combo-display.mega{font-size:28px}
+
+  /* 题目面板 */
+  .q-panel{padding:10px 12px 12px}
+  .q-topic{font-size:11px;padding:3px 8px;margin-bottom:4px}
+  .q-text{font-size:15px;line-height:1.45;margin-bottom:6px}
+  .q-text-wrap{margin-bottom:6px;gap:6px}
+  .speak-q{width:32px;height:32px;font-size:15px}
+  .q-options{grid-template-columns:1fr;gap:6px;margin-bottom:6px}
+  .opt{padding:10px 10px;font-size:14px;border-radius:12px}
+  .q-input{padding:10px;font-size:16px}
+  .q-actions{gap:6px}
+  .q-photo{max-height:15vh}
+
+  /* 通用按钮 */
+  .btn{padding:10px 16px;font-size:14px;border-radius:12px}
+  .btn.small{padding:6px 10px;font-size:12px}
+  .btn.block{padding:12px 16px}
+
+  /* 弹窗/覆盖层 */
+  .modal{padding:12px 12px 20px;border-radius:22px 22px 0 0}
+  .ai-head{margin-bottom:10px}
+  .ai-avatar{width:44px;height:44px;font-size:28px}
+  .ai-bubble{font-size:13px;padding:10px 36px 10px 12px;line-height:1.6}
+  .ai-bubble .speak-btn{width:28px;height:28px;font-size:14px;top:8px;right:6px}
+
+  /* 胜利/失败 */
+  .victory-card{padding:16px;border-radius:20px}
+  .victory-card h2{font-size:22px;letter-spacing:3px}
+  .victory-card .mascot{font-size:56px}
+  .reward-item .ic{font-size:28px}
+  .reward-item .n{font-size:16px}
+  .stars-reward .star{font-size:36px}
+
+  /* Page 页面（伙伴/商店/错题/成就/设置） */
+  .page-safe-top{height:calc(env(safe-area-inset-top,10px) + 46px);min-height:46px}
+  .page-header{padding:0 14px 10px}
+  .page-header h2{font-size:18px;letter-spacing:2px}
+  .page-body{padding:0 14px 14px}
+  .back-btn{top:calc(env(safe-area-inset-top,10px) + 6px);left:10px;width:36px;height:36px;font-size:18px;border-radius:10px}
+  .pet-card{padding:18px;border-radius:18px}
+  .pet-face{width:110px;height:110px;font-size:64px}
+  .shop-grid{gap:8px}
+  .shop-item{padding:12px;border-radius:14px}
+  .shop-item .ic{font-size:34px}
+  .stat-grid{gap:8px}
+  .stat-tile{padding:12px;border-radius:14px}
+  .stat-tile .n{font-size:22px}
+
+  /* AI 拍照出题 */
+  .ai-hero .ic{font-size:56px}
+  .ai-hero h3{font-size:17px}
+  .upload-grid{gap:8px}
+  .upload-btn{padding:16px 10px;border-radius:14px}
+  .upload-btn .big{font-size:34px}
+  .upload-btn .t{font-size:14px}
+  .fab-ai{width:50px;height:50px;font-size:22px;right:14px;bottom:80px}
+
+  /* 休息提醒 */
+  .rest-overlay .big{font-size:60px}
+  .rest-overlay h2{font-size:20px}
+  .rest-timer{font-size:32px}
+}
+
+/* ---------- 超小屏手机 (≤360px) ---------- */
+@media(max-width:360px){
+  .logo{font-size:28px}
+  .hero-mascot{font-size:48px;margin:2px 0 10px}
+  .logo-sub{font-size:10px;letter-spacing:2px}
+  .start-card{padding:12px}
+  .avatar-opt{width:38px;height:38px;font-size:22px}
+  .map-title{font-size:16px}
+  .continent .icon{width:40px;height:40px;font-size:22px}
+  .continent .name{font-size:13px}
+  .bottom-nav{left:6px;right:6px;padding:5px;border-radius:16px}
+  .nav-item{font-size:9px}
+  .nav-item .ic{font-size:15px}
+  .q-text{font-size:14px}
+  .opt{padding:8px 8px;font-size:13px}
+  .battle-left{max-height:20vh;padding-top:24px}
+  .monster{font-size:min(50px,9vh)}
+  .player-char{font-size:min(30px,6vh)}
+  .page-safe-top{height:calc(env(safe-area-inset-top,8px) + 40px);min-height:40px}
+  .page-header h2{font-size:16px}
+}
+
+/* ---------- 矮屏补丁 (高度≤640px，如横屏手机) ---------- */
+@media(max-height:640px){
+  .logo{font-size:36px}
+  .hero-mascot{font-size:50px;margin:4px 0 10px}
+  .logo-sub{margin-bottom:10px}
+  .start-card{padding:14px}
+  .battle-left{max-height:18vh;min-height:60px;padding-top:24px}
+  .monster{font-size:min(50px,9vh)}
+  .player-char{font-size:min(30px,6vh)}
+  .q-panel{padding:8px 12px 10px}
+  .q-text{font-size:14px;margin-bottom:4px}
+  .opt{padding:8px 6px;font-size:13px}
+  .q-options{gap:4px;margin-bottom:4px}
+  .victory-card .mascot{font-size:50px}
+}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- ================= 开始界面 ================= -->
+  <div id="start" class="screen active">
+    <div class="stars-bg"></div>
+    <div class="title-wrap">
+      <div class="hero-mascot">🧙‍♂️</div>
+      <h1 class="logo">学霸奇遇记</h1>
+      <div class="logo-sub">魔 法 学 习 大 冒 险</div>
+      <div class="start-card">
+        <label>给自己取个冒险者名字</label>
+        <input type="text" id="player-name" maxlength="8" placeholder="例如：小勇者" />
+        <label>挑一个头像</label>
+        <div class="avatar-row" id="avatar-pick"></div>
+        <label>我现在读几年级</label>
+        <div class="grade-row" id="grade-pick"></div>
+        <button class="btn block" id="start-btn">开 启 冒 险 ✨</button>
+      </div>
+      <div style="margin-top:14px;font-size:12px;color:var(--c-muted)">进度会保存在本设备 · 无需联网</div>
+    </div>
+  </div>
+
+  <!-- ================= 世界地图 ================= -->
+  <div id="map" class="screen">
+    <div class="hud">
+      <button class="hud-btn" id="open-profile" title="我的">🎒</button>
+      <div class="hud-stat gold"><span class="icon">⭐</span><span id="hud-stars">0</span></div>
+      <div class="hud-stat gem"><span class="icon">💎</span><span id="hud-gems">0</span></div>
+      <div class="hud-spacer"></div>
+      <button class="hud-btn" id="voice-toggle-map" title="语音开关">🔊</button>
+      <button class="hud-btn" id="switch-user" title="切换用户">👤</button>
+      <button class="hud-btn" id="open-settings" title="设置">⚙️</button>
+    </div>
+    <div class="map-title">🗺️ 知 识 大 陆</div>
+    <div class="map-canvas" id="map-canvas"></div>
+    <div class="bottom-nav">
+      <div class="nav-item active" data-nav="map"><span class="ic">🗺️</span>冒险</div>
+      <div class="nav-item" data-nav="pet"><span class="ic">🐣</span>伙伴</div>
+      <div class="nav-item" data-nav="shop"><span class="ic">🛒</span>商店</div>
+      <div class="nav-item" data-nav="wrongbook"><span class="ic">📕</span>错题</div>
+      <div class="nav-item" data-nav="profile"><span class="ic">🏆</span>成就</div>
+    </div>
+  </div>
+
+  <!-- ================= 大陆内副本选择 ================= -->
+  <div id="region" class="screen">
+    <button class="back-btn" data-back="map">←</button>
+    <div class="hud">
+      <div class="hud-spacer"></div>
+      <div class="hud-stat gold"><span class="icon">⭐</span><span class="hud-stars">0</span></div>
+    </div>
+    <div class="region-header">
+      <h2 id="region-name">森林大陆</h2>
+      <p id="region-desc">在这里挑战副本，答对题目就能打败怪兽！</p>
+    </div>
+    <div class="dungeon-grid" id="dungeon-grid"></div>
+  </div>
+
+  <!-- ================= 战斗场景 ================= -->
+  <div id="battle" class="screen">
+    <button class="back-btn" id="battle-quit">←</button>
+    <div class="battle-scene">
+      <div class="battle-top">
+        <div class="prog-bar" id="battle-prog"></div>
+        <div class="prog-label" id="battle-idx">1/5</div>
+      </div>
+      <div class="battle-body">
+        <!-- 左侧：战斗区 -->
+        <div class="battle-left">
+          <div class="arena" id="arena">
+            <div class="monster" id="monster">
+              <div class="monster-name" id="monster-name">算术小怪兽</div>
+              <div class="monster-hp" id="monster-hp"><div id="monster-hp-bar"></div></div>
+              <span id="monster-emoji">👾</span>
+            </div>
+            <div class="player-wrap">
+              <div class="player-char" id="player-char">🦜</div>
+              <div class="player-name" id="player-name-battle"></div>
+              <div class="player-hp" id="player-hp"><div id="player-hp-bar"></div></div>
+            </div>
+            <div class="combo-display" id="combo-display"></div>
+          </div>
+        </div>
+        <!-- 右侧：题目区 -->
+        <div class="battle-right">
+          <div class="q-panel">
+            <div class="q-photo-area" id="q-photo-area"></div>
+            <span class="q-topic" id="q-topic">数学 · 加减法</span>
+            <div class="q-text-wrap">
+              <div class="q-text" id="q-text">3 + 5 = ?</div>
+              <button class="speak-q" id="speak-q" title="朗读题目">🔊</button>
+            </div>
+            <div id="q-options" class="q-options"></div>
+            <div id="q-input-area" class="q-input-wrap hidden">
+              <input class="q-input" id="q-input" type="text" inputmode="text" autocomplete="off" />
+              <button class="btn success" id="q-submit">确定</button>
+            </div>
+            <div class="q-actions">
+              <button class="btn ghost small" id="ai-help">🧙 蘑菇博士帮我</button>
+              <button class="btn ghost small" id="skip-q">换一题</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ================= AI 讲题弹窗（所有屏幕共用） ================= -->
+<div class="modal-mask" id="ai-modal">
+  <div class="modal">
+    <div class="handle"></div>
+    <div class="ai-head">
+      <div class="ai-avatar">🍄</div>
+      <div>
+        <div class="ai-name">蘑菇博士</div>
+        <div class="ai-role">AI · 耐心讲解老师</div>
+      </div>
+      <div style="flex:1"></div>
+      <button class="hud-btn" id="ai-close">✕</button>
+    </div>
+    <div id="ai-bubbles"></div>
+    <div class="ai-actions">
+      <button class="btn ghost small" id="ai-next">下一步提示</button>
+      <button class="btn small" id="ai-got-it">我懂了</button>
+    </div>
+  </div>
+</div>
+
+<!-- ================= 胜利覆盖层 ================= -->
+<div class="overlay" id="victory">
+  <div class="victory-card">
+    <div class="mascot" id="victory-mascot">🏆</div>
+    <h2 id="victory-title">胜 利 ！</h2>
+    <div class="stars-reward" id="victory-stars">
+      <span class="star">⭐</span><span class="star">⭐</span><span class="star">⭐</span>
+    </div>
+    <div style="color:var(--c-muted);font-size:13px" id="victory-sub">这关正确率 100%</div>
+    <div class="reward-row">
+      <div class="reward-item"><span class="ic">⭐</span><span class="n" id="rw-star">+0</span><span class="l">星星</span></div>
+      <div class="reward-item"><span class="ic">💎</span><span class="n" id="rw-gem">+0</span><span class="l">宝石</span></div>
+      <div class="reward-item"><span class="ic">⚡</span><span class="n" id="rw-xp">+0</span><span class="l">经验</span></div>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:10px">
+      <button class="btn ghost block" id="v-back">返回地图</button>
+      <button class="btn block" id="v-next">继续冒险 ▶</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="defeat">
+  <div class="victory-card" style="border-color:rgba(255,61,61,.3)">
+    <div class="mascot">😵</div>
+    <h2 style="color:#ff6b6b">挑 战 失 败</h2>
+    <div style="color:var(--c-muted);font-size:13px" id="defeat-sub">别灰心，再来一次！</div>
+    <div style="display:flex;gap:8px;margin-top:16px">
+      <button class="btn ghost block" id="d-back">返回地图</button>
+      <button class="btn block" id="d-retry">再来一次 🔄</button>
+    </div>
+  </div>
+</div>
+
+<!-- ================= 页面：伙伴 / 商店 / 成就 ================= -->
+<div class="page" id="page-pet">
+  <button class="back-btn" data-close-page>←</button>
+  <div class="page-safe-top"></div>
+  <div class="page-header"><h2>🐣 我的伙伴</h2></div>
+  <div class="page-body" id="pet-body"></div>
+</div>
+<div class="page" id="page-shop">
+  <button class="back-btn" data-close-page>←</button>
+  <div class="page-safe-top"></div>
+  <div class="page-header"><h2>🛒 魔法商店</h2></div>
+  <div class="page-body" id="shop-body"></div>
+</div>
+<!-- 拍照出题页面 -->
+<div class="page" id="page-ai">
+  <button class="back-btn" data-close-page>←</button>
+  <button class="hud-btn" id="ai-settings-btn" style="position:absolute;top:14px;right:14px;z-index:40">⚙️</button>
+  <div class="page-safe-top"></div>
+  <div class="page-header"><h2>📸 拍照出题</h2></div>
+  <div class="page-body">
+    <div class="ai-hero">
+      <div class="ic">🤖</div>
+      <h3>AI 帮你出题啦</h3>
+      <p>对作业拍张照，AI大模型自动识别题目，<br>生成专属闯关副本，蘑菇博士还会讲解！</p>
+    </div>
+
+    <div id="ai-view-idle">
+      <div class="upload-grid">
+        <button class="upload-btn camera" id="btn-camera">
+          <span class="big">📷</span>
+          <div class="t">拍照</div>
+          <div class="d">用手机摄像头</div>
+        </button>
+        <button class="upload-btn file" id="btn-file">
+          <span class="big">📁</span>
+          <div class="t">上传图片</div>
+          <div class="d">从相册/电脑选</div>
+        </button>
+      </div>
+      <div class="drop-zone" id="drop-zone">
+        <span class="big">🖼️</span>
+        <div class="t">也可以直接把图片拖到这里</div>
+        <div class="d">或在电脑上按 <b>Ctrl+V</b> 粘贴截图<br>支持 jpg/png/webp，自动识别图中全部题目</div>
+      </div>
+      <input type="file" id="photo-input-cam" accept="image/*" capture="environment" style="display:none" />
+      <input type="file" id="photo-input-file" accept="image/*" style="display:none" />
+
+      <div class="tip-box">
+        💡 第一次使用需要在 ⚙️ 里填入 AI 大模型的 API Key。<br>
+        支持通义千问-VL、GPT-4o、智谱GLM-4V、Claude 3 等视觉模型。<br>
+        也可以点"试试示例"先体验游戏效果。
+      </div>
+
+      <button class="btn ghost block" id="ai-demo-btn">🎲 试试示例（无需配置）</button>
+    </div>
+
+    <div id="ai-view-work" class="hidden">
+      <div class="pho-preview"><img id="pho-img" /></div>
+      <div class="progress-card" id="ai-progress"></div>
+      <button class="btn ghost block small" id="ai-cancel">取消</button>
+    </div>
+
+    <div id="ai-view-preview" class="hidden">
+      <div class="pho-preview"><img id="pho-img2" /></div>
+      <h3 style="margin:14px 0 10px;font-size:16px">📋 AI 识别到 <span id="q-count">0</span> 道题</h3>
+      <div id="q-preview-list"></div>
+      <div style="display:flex;gap:8px;margin-top:16px">
+        <button class="btn ghost block" id="ai-redo">重新拍</button>
+        <button class="btn block" id="ai-battle">⚔️ 开始闯关</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- AI 设置页面 -->
+<div class="page" id="page-ai-cfg">
+  <button class="back-btn" id="ai-cfg-back">←</button>
+  <div class="page-safe-top"></div>
+  <div class="page-header"><h2>⚙️ AI 设置</h2></div>
+  <div class="page-body">
+    <div class="tip-box">
+      选择大模型厂商，填入 API Key 即可。设置只保存在本设备。<br><br>
+      <b>⚠️ 关于国产模型（Kimi/通义/智谱）：</b>它们的 API 默认不允许浏览器跨域直连（CORS），在本页面直接调用会失败。常见方案：<br>
+      1️⃣ 让家里懂开发的人搭个简单代理（Cloudflare Worker、Vercel 20 行代码就能转发）；<br>
+      2️⃣ 把"API 接入地址"改成你自己的代理 URL；<br>
+      3️⃣ 或者直接用 OpenAI（GPT-4o 原生支持浏览器跨域）。<br><br>
+      <b>🔑 Kimi 用户请注意：</b>Kimi-Coding 专用 Key 主要给代码补全工具用，<b>通常不支持图像输入</b>。拍照出题需要在 platform.moonshot.cn 开通 <code>moonshot-v1-8k-vision-preview</code> 视觉模型的 Key。
+    </div>
+    <div class="cfg-row">
+      <label>选择模型厂商</label>
+      <div class="preset-row" id="preset-row"></div>
+    </div>
+    <div class="cfg-row">
+      <label>API 接入地址 (endpoint)</label>
+      <input id="cfg-url" type="text" placeholder="https://..." />
+    </div>
+    <div class="cfg-row">
+      <label>模型名称 (model)</label>
+      <input id="cfg-model" type="text" placeholder="qwen-vl-plus" />
+    </div>
+    <div class="cfg-row">
+      <label>API Key</label>
+      <input id="cfg-key" type="password" placeholder="sk-..." />
+    </div>
+    <div class="cfg-row">
+      <label>年级 (影响题目难度提示)</label>
+      <select id="cfg-grade">
+        <option value="1">一年级</option><option value="2">二年级</option>
+        <option value="3">三年级</option><option value="4">四年级</option>
+        <option value="5">五年级</option><option value="6">六年级</option>
+      </select>
+    </div>
+    <hr style="border:none;border-top:1px solid rgba(255,255,255,.12);margin:22px 0 16px">
+    <div class="tip-box">
+      <b>🔊 语音朗读（可选·强烈推荐）：</b>配上服务端 TTS 后，题目/提示会用真人感童声念出。推荐 <b>火山引擎</b>（200 万字符/月免费，儿童音色一流）。<br>
+      部署 proxy.js 后，把下方地址改成：<code>http://&lt;proxy 机器 IP&gt;:8787/tts</code>。留空则用浏览器自带 TTS（音质较差）。
+    </div>
+    <div class="cfg-row">
+      <label>TTS 服务地址 (留空 = 用浏览器 TTS)</label>
+      <input id="cfg-tts-url" type="text" placeholder="http://192.168.3.79:8787/tts" />
+    </div>
+    <div class="cfg-row">
+      <label>TTS 音色</label>
+      <select id="cfg-tts-voice">
+        <optgroup label="角色扮演（推荐给小学生 ⭐）">
+          <option value="saturn_zh_female_keainvsheng_tob">可爱女生 ⭐</option>
+          <option value="saturn_zh_female_tiaopigongzhu_tob">调皮公主</option>
+          <option value="saturn_zh_male_tiancaitongzhuo_tob">天才同桌</option>
+          <option value="saturn_zh_male_shuanglangshaonian_tob">爽朗少年</option>
+          <option value="saturn_zh_female_cancan_tob">知性灿灿</option>
+        </optgroup>
+        <optgroup label="通用场景">
+          <option value="zh_female_vv_uranus_bigtts">vivi 2.0（女声）</option>
+          <option value="zh_female_xiaohe_uranus_bigtts">小何（女声）</option>
+          <option value="zh_male_taocheng_uranus_bigtts">小天（男声）</option>
+          <option value="zh_male_m191_uranus_bigtts">云舟（男声）</option>
+          <option value="en_male_tim_uranus_bigtts">Tim（英文男声）</option>
+        </optgroup>
+      </select>
+    </div>
+    <div class="cfg-row">
+      <label>语速 (0.5 ~ 2.0)</label>
+      <input id="cfg-tts-rate" type="number" step="0.05" min="0.5" max="2" placeholder="0.95" />
+    </div>
+    <button class="btn block" id="cfg-save">💾 保存</button>
+    <button class="btn ghost block small" id="cfg-test" style="margin-top:8px">🔌 测试 AI 连通</button>
+    <button class="btn ghost block small" id="cfg-tts-test" style="margin-top:6px">🔊 试听语音</button>
+  </div>
+</div>
+
+<!-- 首页悬浮 AI 按钮 -->
+<button class="fab-ai" id="fab-ai" title="拍照出题">📸</button>
+
+<div class="page" id="page-wrongbook">
+  <button class="back-btn" data-close-page>←</button>
+  <div class="page-safe-top"></div>
+  <div class="page-header"><h2>📕 错题库</h2></div>
+  <div class="page-body" id="wrongbook-body"></div>
+</div>
+<div class="page" id="page-profile">
+  <button class="back-btn" data-close-page>←</button>
+  <div class="page-safe-top"></div>
+  <div class="page-header"><h2>🏆 我的档案</h2></div>
+  <div class="page-body" id="profile-body"></div>
+</div>
+
+<!-- ================= 休息提醒 ================= -->
+<div class="rest-overlay" id="rest">
+  <div class="big">👀</div>
+  <h2>该让眼睛休息一下啦！</h2>
+  <p>连续冒险太久会累哦，来做 20 秒的远眺，看看远方的窗外～</p>
+  <div class="rest-timer" id="rest-timer">20</div>
+  <button class="btn ghost" id="rest-skip">我休息够啦</button>
+</div>
+
+<!-- ================= 自定义确认弹窗 ================= -->
+<div class="confirm-overlay" id="confirm-overlay">
+  <div class="confirm-card">
+    <div class="confirm-icon" id="confirm-icon">🏃</div>
+    <div class="confirm-title" id="confirm-title">放弃本次冒险？</div>
+    <div class="confirm-msg" id="confirm-msg">当前进度不会保存哦</div>
+    <div class="confirm-btns">
+      <button class="btn btn-cancel" id="confirm-no">继续战斗</button>
+      <button class="btn btn-danger" id="confirm-yes">确定离开</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast-wrap" id="toast-wrap"></div>
+
+<script src="/static/questions.js"></script>
+<script src="/static/grade1.js"></script>
+<script src="/static/grade2.js"></script>
+<script src="/static/grade3.js"></script>
+<script src="/static/grade4.js"></script>
+<script src="/static/grade5.js"></script>
+<script src="/static/grade6.js"></script>
+<script>
+/* ============================================================
+ *  学霸奇遇记 —— 核心逻辑
+ * ============================================================ */
+(function(){
+'use strict';
+// ------------------ 基础工具 ------------------
+const $=s=>document.querySelector(s);
+const $$=s=>document.querySelectorAll(s);
+const rand=(a,b)=>Math.floor(Math.random()*(b-a+1))+a;
+const pick=arr=>arr[Math.floor(Math.random()*arr.length)];
+const shuffle=a=>{const r=[...a];for(let i=r.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[r[i],r[j]]=[r[j],r[i]]}return r};
+const clone=o=>JSON.parse(JSON.stringify(o));
+const toast=(msg,ms=1800)=>{const el=document.createElement('div');el.className='toast';el.textContent=msg;$('#toast-wrap').appendChild(el);setTimeout(()=>el.remove(),ms+200)};
+// ====== 自定义确认弹窗 ======
+function showConfirm({icon='🏃',title='确定吗？',msg='',yes='确定',no='取消',danger=true}={}){
+  return new Promise(resolve=>{
+    $('#confirm-icon').textContent=icon;
+    $('#confirm-title').textContent=title;
+    $('#confirm-msg').textContent=msg;
+    $('#confirm-yes').textContent=yes;
+    $('#confirm-no').textContent=no;
+    $('#confirm-yes').className='btn '+(danger?'btn-danger':'btn-cancel');
+    const overlay=$('#confirm-overlay');
+    overlay.classList.add('show');
+    const done=v=>{overlay.classList.remove('show');resolve(v)};
+    $('#confirm-yes').onclick=()=>done(true);
+    $('#confirm-no').onclick=()=>done(false);
+    overlay.onclick=e=>{if(e.target===overlay)done(false)};
+  });
+}
+// ====== 语音朗读（服务端 TTS 优先，浏览器兜底） ======
+const TTS={enabled:true,current:null,audio:null,voices:[]};
+try{
+  const loadVoices=()=>{TTS.voices=window.speechSynthesis.getVoices()||[]};
+  loadVoices();
+  if(window.speechSynthesis)window.speechSynthesis.onvoiceschanged=loadVoices;
+}catch(e){}
+function detectLang(text){
+  const en=text.match(/[a-zA-Z]/g)||[];
+  const zh=text.match(/[\u4e00-\u9fa5]/g)||[];
+  return en.length>zh.length*2?'en-US':'zh-CN';
+}
+function pickVoice(lang){
+  if(!TTS.voices.length)return null;
+  const want=TTS.voices.filter(v=>v.lang&&v.lang.startsWith(lang.split('-')[0]));
+  if(!want.length)return null;
+  const kid=want.find(v=>/Xiaoxiao|Yaoyao|Kid|child|Female|女|小/i.test(v.name));
+  return kid||want[0];
+}
+function stripForTTS(s){
+  return String(s||'')
+    .replace(/<[^>]+>/g,' ')
+    .replace(/[*_`#~]/g,'')
+    .replace(/\s+/g,' ')
+    .trim();
+}
+// TTS 预加载缓存：text → Promise<blobURL>
+const _ttsCache=new Map();
+const _preloadQueue=[];
+let _preloadActive=0;
+const _preloadMax=3; // 最多同时 3 个预加载请求
+function _preloadRun(){
+  while(_preloadActive<_preloadMax&&_preloadQueue.length>0){
+    const task=_preloadQueue.shift();
+    _preloadActive++;
+    task().finally(()=>{_preloadActive--;_preloadRun()});
+  }
+}
+function preloadTTS(text){
+  const t=stripForTTS(text);
+  if(!t||_ttsCache.has(t))return;
+  let cfg={};try{cfg=loadAICfg()}catch(e){}
+  if(!cfg.tts_url)return;
+  const voice=cfg.tts_voice||'saturn_zh_female_keainvsheng_tob';
+  const rate=cfg.tts_rate||0.95;
+  // 先占位防重复
+  let resolve_;
+  _ttsCache.set(t,new Promise(r=>{resolve_=r}));
+  _preloadQueue.push(()=>{
+    const useGet=t.length<=120;
+    const p=useGet
+      ? fetch(cfg.tts_url+(cfg.tts_url.includes('?')?'&':'?')+'text='+encodeURIComponent(t)+'&voice='+encodeURIComponent(voice)+'&rate='+rate)
+      : fetch(cfg.tts_url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:t,voice:voice,rate:rate,encoding:'mp3'})});
+    return p.then(r=>{
+      if(!r.ok)throw new Error('HTTP '+r.status);
+      return r.blob();
+    }).then(blob=>{const url=URL.createObjectURL(blob);resolve_(url);return url})
+      .catch(()=>{_ttsCache.delete(t);resolve_(null)});
+  });
+  _preloadRun();
+}
+// 清理 TTS 缓存，释放 blob URL 内存
+function clearTTSCache(){
+  _ttsCache.forEach((p)=>{
+    if(p&&typeof p.then==='function')p.then(url=>{if(url)try{URL.revokeObjectURL(url)}catch(e){}});
+  });
+  _ttsCache.clear();
+  _preloadQueue.length=0;
+}
+// 战斗开始时批量预加载所有题目 + 鼓励语 + 蘑菇博士开场白
+function preloadBattle(qs){
+  clearTTSCache();
+  // 所有题目文本
+  qs.forEach(q=>{
+    let t=q.q;
+    if(q.type==='choice'&&q.options){t+='。选项：'+q.options.join('；')}
+    preloadTTS(t);
+    // 蘑菇博士开场白
+    preloadTTS('哎呀，答错了不要紧！我是蘑菇博士，我们一步一步来看这道题：'+q.q);
+    preloadTTS('没问题，这道题我们一步一步想：'+q.q);
+    // 提示和解答
+    if(q.hints)q.hints.forEach(h=>preloadTTS(h));
+    if(q.answer)preloadTTS('正确答案是 '+q.answer+'。'+(q.explain||''));
+  });
+  // 鼓励语
+  ['答对啦！','太棒了！','真聪明！','就是这样！','厉害！'].forEach(c=>preloadTTS(c));
+}
+// 语音队列：顺序播放，不互相取消
+let _ttsId=0;
+const _speakQueue=[];
+let _speakPlaying=false;
+function speak(text,opts){
+  opts=opts||{};
+  if(!TTS.enabled)return;
+  const t=stripForTTS(text);
+  if(!t)return;
+  if(opts.queue){
+    // 队列模式：排队等前一个播完再播
+    _speakQueue.push({t,opts});
+    if(!_speakPlaying)_drainQueue();
+  }else{
+    // 默认模式：立即播放，清空队列，停掉当前
+    _speakQueue.length=0;
+    _stopCurrent();
+    _playOne(t,opts);
+  }
+}
+function _drainQueue(){
+  if(_speakQueue.length===0){_speakPlaying=false;return}
+  _speakPlaying=true;
+  const {t,opts}=_speakQueue.shift();
+  _playOne(t,opts,()=>_drainQueue());
+}
+function _playOne(t,opts,onDone){
+  const myId=++_ttsId;
+  let cfg={};try{cfg=loadAICfg()}catch(e){}
+  if(!cfg.tts_url){if(onDone)onDone();return}
+  const voice=cfg.tts_voice||'saturn_zh_female_keainvsheng_tob';
+  const rate=opts.rate||cfg.tts_rate||0.95;
+  const cancelled=()=>myId!==_ttsId;
+  const cached=_ttsCache.get(t);
+
+  const play=(blobUrl)=>{
+    if(cancelled()){if(onDone)onDone();return}
+    const a=new Audio();
+    TTS.audio=a;TTS.current=a;
+    if(opts.btn)opts.btn.classList.add('playing');
+    const cleanup=()=>{
+      if(TTS.audio===a)TTS.audio=null;
+      if(TTS.current===a)TTS.current=null;
+      if(opts.btn)opts.btn.classList.remove('playing');
+      if(onDone)onDone();
+    };
+    a.onended=cleanup;
+    a.onerror=()=>{cleanup()};
+    a.src=blobUrl;
+    a.play().catch(()=>{cleanup()});
+  };
+
+  const doFetch=()=>{
+    const useGet=t.length<=120;
+    if(useGet){
+      const url=cfg.tts_url+(cfg.tts_url.includes('?')?'&':'?')+
+        'text='+encodeURIComponent(t)+
+        '&voice='+encodeURIComponent(voice)+'&rate='+rate;
+      const a=new Audio();
+      TTS.audio=a;TTS.current=a;
+      if(opts.btn)opts.btn.classList.add('playing');
+      const cleanup=()=>{
+        if(TTS.audio===a)TTS.audio=null;
+        if(TTS.current===a)TTS.current=null;
+        if(opts.btn)opts.btn.classList.remove('playing');
+        if(onDone)onDone();
+      };
+      a.onended=cleanup;
+      a.onerror=()=>{cleanup()};
+      a.src=url;
+      a.play().catch(()=>{cleanup()});
+    }else{
+      fetch(cfg.tts_url,{method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({text:t,voice:voice,rate:rate,encoding:'mp3'})
+      }).then(r=>{if(!r.ok)throw new Error();return r.blob()})
+        .then(blob=>{if(cancelled()){if(onDone)onDone();return}play(URL.createObjectURL(blob))})
+        .catch(()=>{if(onDone)onDone()});
+    }
+  };
+
+  if(cached){
+    cached.then(url=>{if(url)play(url);else doFetch()}).catch(()=>doFetch());
+  }else{
+    doFetch();
+  }
+}
+function stopSpeak(){
+  _speakQueue.length=0;
+  _speakPlaying=false;
+  _stopCurrent();
+}
+function _stopCurrent(){
+  _ttsId++;
+  try{window.speechSynthesis.cancel()}catch(e){}
+  if(TTS.audio){try{TTS.audio.pause();TTS.audio.currentTime=0}catch(e){}}
+  TTS.audio=null;
+  TTS.current=null;
+  $$('.speak-btn,.speak-q').forEach(b=>b.classList.remove('playing'));
+}
+function toggleVoice(){
+  TTS.enabled=!TTS.enabled;
+  localStorage.setItem('scholar_tts',TTS.enabled?'1':'0');
+  if(!TTS.enabled)stopSpeak();
+  $$('#voice-toggle-map,#voice-toggle-battle').forEach(b=>{b.textContent=TTS.enabled?'🔊':'🔇';b.classList.toggle('off',!TTS.enabled)});
+  toast(TTS.enabled?'🔊 语音已打开':'🔇 语音已关闭');
+}
+TTS.enabled=localStorage.getItem('scholar_tts')!=='0';
+
+function sfx(type){
+  try{
+    const ctx=sfx.ctx||(sfx.ctx=new (window.AudioContext||window.webkitAudioContext)());
+    const t=ctx.currentTime;
+    const tone=(freq,end,dur,vol,delay)=>{
+      const o=ctx.createOscillator(),g=ctx.createGain();
+      o.connect(g);g.connect(ctx.destination);
+      const s=t+(delay||0);
+      o.frequency.setValueAtTime(freq,s);
+      o.frequency.exponentialRampToValueAtTime(end,s+dur);
+      g.gain.setValueAtTime(vol||.12,s);
+      g.gain.exponentialRampToValueAtTime(0.001,s+dur);
+      o.start(s);o.stop(s+dur);
+    };
+    const noise=(dur,vol,delay)=>{
+      const len=ctx.sampleRate*dur;
+      const buf=ctx.createBuffer(1,len,ctx.sampleRate);
+      const d=buf.getChannelData(0);
+      for(let i=0;i<len;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/len,2);
+      const src=ctx.createBufferSource();src.buffer=buf;
+      const g=ctx.createGain();g.gain.value=vol||.08;
+      const flt=ctx.createBiquadFilter();flt.type='bandpass';flt.frequency.value=2000;flt.Q.value=1;
+      src.connect(flt);flt.connect(g);g.connect(ctx.destination);
+      src.start(t+(delay||0));
+    };
+    switch(type){
+      case 'shoot':  // 玩家发射
+        tone(1200,2400,.08,.1);tone(2400,800,.12,.08,.06);
+        break;
+      case 'hit':    // 命中爆炸
+        noise(.15,.12);tone(300,80,.2,.15);tone(600,100,.15,.08,.02);
+        break;
+      case 'crithit': // 暴击命中
+        noise(.25,.15);tone(400,60,.3,.18);tone(800,200,.2,.12,.02);tone(1200,400,.15,.08,.05);
+        break;
+      case 'bosshit': // Boss 反击命中玩家
+        noise(.2,.1);tone(200,60,.25,.15);tone(400,100,.15,.1,.05);
+        break;
+      case 'bossshoot': // Boss 发射
+        tone(600,200,.15,.1);tone(300,100,.1,.08,.05);
+        break;
+      case 'explode': // Boss 被击败爆炸
+        noise(.4,.18);tone(300,30,.5,.2);tone(600,50,.4,.12,.05);tone(150,20,.6,.1,.1);
+        noise(.2,.1,.2);tone(800,100,.3,.08,.15);
+        break;
+      case 'good':   // 答对
+        if(_combo>=5){tone(660,1320,.25,.1);tone(880,1760,.25,.08,.03);tone(1100,2200,.2,.06,.06)}
+        else if(_combo>=3){tone(660,1100,.2,.1);tone(880,1320,.18,.08,.03)}
+        else{tone(520,880,.25,.12)}
+        break;
+      case 'bad':    // 答错
+        tone(280,140,.3,.12);tone(200,100,.2,.08,.1);
+        break;
+      case 'ding':   tone(1320,1760,.2,.12);break;
+      case 'coin':   tone(1200,1800,.12,.12);break;
+      default:       tone(440,440,.1,.1);
+    }
+  }catch(e){}
+}
+function spawnParticle(x,y,emoji){
+  const p=document.createElement('div');p.className='particle';p.textContent=emoji;
+  p.style.left=x+'px';p.style.top=y+'px';document.body.appendChild(p);
+  setTimeout(()=>p.remove(),1500);
+}
+function confetti(n=40){
+  const colors=['#ffcf4b','#ff7ac3','#6cf0a1','#9ad6ff','#ffffff'];
+  for(let i=0;i<n;i++){
+    const c=document.createElement('div');c.className='confetti';
+    c.style.left=rand(0,100)+'vw';
+    c.style.background=pick(colors);
+    c.style.animationDuration=(1.4+Math.random()*1.4)+'s';
+    c.style.animationDelay=(Math.random()*.3)+'s';
+    document.body.appendChild(c);
+    setTimeout(()=>c.remove(),3000);
+  }
+}
+
+// ------------------ 6 大陆配置 ------------------
+const CONTINENTS=[
+  {g:1,name:'星空牧场',desc:'一年级·启蒙之地',icon:'🌱',color:'linear-gradient(135deg,#9be7a1,#52b788)',theme:'var(--grad-forest)'},
+  {g:2,name:'蜜糖森林',desc:'二年级·识字小径',icon:'🍯',color:'linear-gradient(135deg,#ffd166,#ef8354)',theme:'var(--grad-desert)'},
+  {g:3,name:'彩虹海湾',desc:'三年级·四则运算',icon:'🌈',color:'linear-gradient(135deg,#7fb8ff,#3b6fd6)',theme:'var(--grad-ocean)'},
+  {g:4,name:'云端遗迹',desc:'四年级·应用题岛',icon:'☁️',color:'linear-gradient(135deg,#c39bff,#7b5cff)',theme:'var(--grad-sky)'},
+  {g:5,name:'霜语雪原',desc:'五年级·分数小数',icon:'❄️',color:'linear-gradient(135deg,#9ec9ff,#5a8ad9)',theme:'var(--grad-ice)'},
+  {g:6,name:'巨龙火山',desc:'六年级·小升初决战',icon:'🐉',color:'linear-gradient(135deg,#ff7a7a,#b8322e)',theme:'var(--grad-volcano)'},
+];
+const SUBJECTS=[
+  {key:'math',name:'数学',icon:'🔢',desc:'打败算术小怪兽',monster:['👾','🤖','👹','🐙','🐲','🧊']},
+  {key:'chinese',name:'语文',icon:'📖',desc:'遇见汉字精灵',monster:['🦊','🐼','🐯','🦉','🐦','🐲']},
+  {key:'english',name:'英语',icon:'🔤',desc:'和字母伙伴同行',monster:['🦜','🐸','🦥','🦁','🐻','🐺']},
+  {key:'science',name:'科学',icon:'🔬',desc:'探索自然界的奥秘',monster:['🧪','🌋','🦠','🧬','🔭','🌊'],minGrade:3},
+];
+const MONSTER_NAMES=['毛毛球','谜语精','字母兽','数字魔','拼图王','风之妖','小石怪','冰晶虫','火蜥蜴','长须仙','回音怪','影子鹰'];
+
+// ------------------ 题库（从 questions.js + grade*.js 加载） ------------------
+
+// ------------------ 存档 ------------------
+const SAVE_KEY='scholar_odyssey_save_v1';
+const DEFAULT_SAVE={
+  name:'小勇者',avatar:'🧑‍🎓',grade:1,
+  stars:0,gems:0,xp:0,lv:1,
+  pet:{name:'蛋蛋',lv:1,xp:0,stage:0,face:'🥚'},
+  owned:['skin_basic'],using:'skin_basic',
+  clearedLevels:{},achv:{},
+  stats:{correct:0,wrong:0,battles:0,levelsCleared:0},
+  battleCount:0,unlocked:[1],
+  lastLogin:null,streak:0,
+  wrongBook:[], // 错题库：{q,answer,userAnswer,topic,date,source}
+};
+let SAVE=loadSave();
+function loadSave(){
+  try{const raw=localStorage.getItem(SAVE_KEY);if(!raw)return clone(DEFAULT_SAVE);
+    return Object.assign(clone(DEFAULT_SAVE),JSON.parse(raw));}catch(e){return clone(DEFAULT_SAVE)}
+}
+function save(){try{localStorage.setItem(SAVE_KEY,JSON.stringify(SAVE))}catch(e){}}
+// 错题库（服务端 SQLite）
+const WB_API='/api/wrongbook';
+function wbUser(){return encodeURIComponent(SAVE.name||'default')}
+function addWrongQuestion(q,userAnswer){
+  const body={q:q.q,type:q.type,options:q.options,answer:q.answer,
+    hints:q.hints,explain:q.explain,topic:q.topic,
+    userAnswer:String(userAnswer),source:B.fromAI?'拍照出题':'闯关',
+    needsImage:q.needsImage,imageDesc:q.imageDesc};
+  fetch(WB_API+'?user='+wbUser(),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}).catch(()=>{});
+}
+function removeWrongQuestion(id){
+  fetch(WB_API+'/'+id+'?user='+wbUser(),{method:'DELETE'}).then(()=>renderWrongBook()).catch(()=>{});
+}
+function startWrongBookBattle(){
+  fetch(WB_API+'?user='+wbUser()).then(r=>r.json()).then(wb=>{
+    if(!wb.length){toast('错题库是空的，继续闯关吧！');return}
+    const picks=shuffle(wb).slice(0,Math.min(5,wb.length));
+    B={g:SAVE.grade,subj:'math',lv:1,qs:picks,idx:0,correct:0,wrong:0,usedHelp:false,hintStep:0,fromWrongBook:true,results:[]};
+    $('#battle').style.background='linear-gradient(135deg,#5a1a2a,#8a2e4a)';
+    $('#monster-name').textContent='📕 错题大Boss';
+    $('#monster-emoji').textContent='📕';
+    $('#monster').classList.remove('dying','hit');
+    $('#monster-hp-bar').style.width='100%';
+    $('#monster-hp').classList.remove('low');
+    _combo=0;showCombo();
+    const petFace=PET_STAGES[SAVE.pet.stage||0].face;
+    $('#player-char').textContent=petFace;
+    $('#player-name-battle').textContent=SAVE.name||'小勇者';
+    B.playerHp=3;B.playerMaxHp=3;updatePlayerHp();
+    const pb=$('#battle-prog');pb.innerHTML='';
+    for(let i=0;i<picks.length;i++){const d=document.createElement('div');d.className='prog-dot'+(i===0?' current':'');pb.appendChild(d)}
+    closePages();renderQ();showScreen('battle');
+  }).catch(()=>toast('无法加载错题库'));
+}
+function renderWrongBook(){
+  const body=$('#wrongbook-body');if(!body)return;
+  body.innerHTML='<div style="text-align:center;padding:20px;color:var(--c-muted)">加载中...</div>';
+  fetch(WB_API+'?user='+wbUser()).then(r=>r.json()).then(wb=>{
+    if(!wb.length){
+      body.innerHTML='<div style="text-align:center;padding:40px;color:var(--c-muted)">🎉 错题库是空的！继续保持！</div>';
+      return;
+    }
+    body.innerHTML=`
+      <div style="display:flex;gap:8px;margin-bottom:14px">
+        <button class="btn block small" id="wb-battle">📕 错题闯关 (${Math.min(5,wb.length)}题)</button>
+        <button class="btn ghost block small" id="wb-clear">清空错题库</button>
+      </div>
+      <div style="font-size:12px;color:var(--c-muted);margin-bottom:10px">共 ${wb.length} 道错题</div>
+      <div id="wb-list"></div>`;
+    const list=$('#wb-list');
+    wb.forEach(w=>{
+      const d=document.createElement('div');
+      d.style.cssText='background:var(--c-panel);border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:12px;margin-bottom:8px';
+      d.innerHTML=`<div style="font-size:14px;font-weight:700;margin-bottom:4px">${w.q}</div>
+        <div style="font-size:12px;color:#ff6b6b">❌ 你的答案：${w.userAnswer}</div>
+        <div style="font-size:12px;color:#6cf0a1">✅ 正确答案：${w.answer}</div>
+        <div style="font-size:11px;color:var(--c-muted);margin-top:4px">${w.topic||''} · ${w.source||''} · ${(w.date||'').slice(0,10)}
+          <span style="cursor:pointer;float:right" onclick="removeWrongQuestion(${w.id})">🗑️</span></div>`;
+      list.appendChild(d);
+    });
+    $('#wb-battle').onclick=startWrongBookBattle;
+    $('#wb-clear').onclick=async()=>{if(await showConfirm({icon:'🗑️',title:'清空错题库？',msg:'所有错题记录将被永久删除',yes:'确定清空',no:'取消'})){fetch(WB_API+'?user='+wbUser(),{method:'DELETE'}).then(()=>renderWrongBook())}};
+  }).catch(e=>{body.innerHTML='<div style="text-align:center;padding:20px;color:#ff6b6b">⚠️ 加载失败: '+e.message+'<br><br><button class="btn small" onclick="renderWrongBook()">重试</button></div>'});
+}
+function reward(stars=0,gems=0,xp=0){
+  SAVE.stars+=stars;SAVE.gems+=gems;SAVE.xp+=xp;
+  while(SAVE.xp>=SAVE.lv*100){SAVE.xp-=SAVE.lv*100;SAVE.lv++;toast(`🎉 升级啦！Lv ${SAVE.lv}`);confetti(30)}
+  updateHUD();save();
+}
+function updateHUD(){
+  $$('#hud-stars,.hud-stars').forEach(e=>e.textContent=SAVE.stars);
+  $$('#hud-gems,.hud-gems').forEach(e=>e.textContent=SAVE.gems);
+}
+
+// ------------------ 场景 ------------------
+function showScreen(id){$$('.screen').forEach(s=>s.classList.remove('active'));$('#'+id).classList.add('active')}
+
+// ------------------ 开始界面 ------------------
+const AVATARS=['🧑‍🎓','👦','👧','🧒','🦊','🐼','🐯','🦄'];
+function initStart(){
+  const ar=$('#avatar-pick');ar.innerHTML='';
+  AVATARS.forEach(a=>{
+    const d=document.createElement('div');d.className='avatar-opt';d.textContent=a;d.dataset.a=a;
+    if(a===SAVE.avatar)d.classList.add('selected');
+    d.onclick=()=>{$$('#avatar-pick .avatar-opt').forEach(x=>x.classList.remove('selected'));d.classList.add('selected');SAVE.avatar=a};
+    ar.appendChild(d);
+  });
+  const gr=$('#grade-pick');gr.innerHTML='';
+  for(let i=1;i<=6;i++){
+    const d=document.createElement('div');d.className='grade-opt';d.textContent=i+'年级';d.dataset.g=i;
+    if(i===SAVE.grade)d.classList.add('selected');
+    d.onclick=()=>{$$('#grade-pick .grade-opt').forEach(x=>x.classList.remove('selected'));d.classList.add('selected');SAVE.grade=i};
+    gr.appendChild(d);
+  }
+  $('#player-name').value=SAVE.name==='小勇者'?'':SAVE.name;
+  $('#start-btn').onclick=()=>{
+    const n=$('#player-name').value.trim();SAVE.name=n||'小勇者';
+    for(let i=1;i<=SAVE.grade;i++) if(!SAVE.unlocked.includes(i)) SAVE.unlocked.push(i);
+    SAVE.unlocked.sort((a,b)=>a-b);save();
+    renderMap();showScreen('map');sfx('ding');
+    const today=new Date().toDateString();
+    if(SAVE.lastLogin!==today){
+      SAVE.streak=(SAVE.lastLogin===new Date(Date.now()-864e5).toDateString())?(SAVE.streak+1):1;
+      SAVE.lastLogin=today;reward(10,2,0);
+      toast(`📅 登录第 ${SAVE.streak} 天 · +10⭐ +2💎`);
+    }
+  };
+}
+
+// ------------------ 地图 ------------------
+function renderMap(){
+  updateHUD();
+  const c=$('#map-canvas');c.innerHTML='';
+  CONTINENTS.forEach(ct=>{
+    const cleared=countClearedOfGrade(ct.g);
+    const pct=Math.round(cleared/9*100);
+    const locked=!SAVE.unlocked.includes(ct.g);
+    const d=document.createElement('div');
+    d.className='continent'+(locked?' locked':'');
+    d.innerHTML=`<div class="icon" style="background:${ct.color}">${ct.icon}</div>
+      <div class="info"><h3 class="name">${ct.name}</h3>
+        <p class="desc">${ct.desc}${locked?' · 🔒 需完成上一大陆':''}</p>
+        <div class="progress"><div style="width:${pct}%"></div></div></div>
+      <div class="chev">›</div>`;
+    d.onclick=()=>{if(locked){toast('先通关上一个大陆才能来哦～');return}openRegion(ct)};
+    c.appendChild(d);
+  });
+}
+function subjectsForGrade(g){return SUBJECTS.filter(s=>!s.minGrade||g>=s.minGrade)}
+function countClearedOfGrade(g){let n=0;subjectsForGrade(g).forEach(s=>{for(let lv=1;lv<=3;lv++)if(SAVE.clearedLevels[`${g}-${s.key}-${lv}`])n++});return n}
+
+// ------------------ 副本 ------------------
+let curContinent=null;
+function openRegion(ct){
+  curContinent=ct;
+  $('#region').style.background=ct.theme;
+  $('#region-name').textContent=ct.name;
+  $('#region-desc').textContent=`${ct.desc} · 选一门课开始冒险吧`;
+  const g=$('#dungeon-grid');g.innerHTML='';
+  subjectsForGrade(ct.g).forEach(s=>{
+    for(let lv=1;lv<=3;lv++){
+      const key=`${ct.g}-${s.key}-${lv}`;
+      const cleared=SAVE.clearedLevels[key]||0;
+      const locked=lv>1 && !SAVE.clearedLevels[`${ct.g}-${s.key}-${lv-1}`];
+      const d=document.createElement('div');
+      d.className='dungeon'+(locked?' locked':'');
+      d.innerHTML=`<div class="icon ${s.key}">${s.icon}</div>
+        <div class="info"><h3>${s.name}·第${lv}关 ${['入门','进阶','挑战'][lv-1]}</h3>
+          <p>${s.desc}${locked?' · 🔒 先通过前一关':''}</p>
+          <div class="star-strip">
+            <span class="s ${cleared>=1?'on':''}">⭐</span>
+            <span class="s ${cleared>=2?'on':''}">⭐</span>
+            <span class="s ${cleared>=3?'on':''}">⭐</span>
+          </div></div>`;
+      d.onclick=()=>{if(locked){toast('先完成上一关');return}startBattle(ct.g,s.key,lv)};
+      g.appendChild(d);
+    }
+  });
+  showScreen('region');
+}
+
+// ------------------ 战斗 ------------------
+let B=null;
+function startBattle(g,subj,lv){
+  const allPool=QB[g][subj]||[];
+  // 按关卡难度筛选：lv1=入门(lv<=1)，lv2=进阶(lv<=2)，lv3=挑战(全部)
+  const pool=allPool.filter(q=>!q.lv||q.lv<=lv);
+  if(!pool.length){toast('这关题库还在路上～');return}
+  const picks=shuffle(pool).slice(0,Math.min(5,pool.length));
+  B={g,subj,lv,qs:picks,idx:0,correct:0,wrong:0,usedHelp:false,hintStep:0,results:[]};
+  // 初始化进度条小格子
+  const pb=$('#battle-prog');pb.innerHTML='';
+  for(let i=0;i<picks.length;i++){const d=document.createElement('div');d.className='prog-dot'+(i===0?' current':'');pb.appendChild(d)}
+  $('#battle').style.background=CONTINENTS.find(c=>c.g===g).theme;
+  $('#monster-name').textContent=`${pick(MONSTER_NAMES)} · Lv${g}`;
+  $('#monster-emoji').textContent=pick(SUBJECTS.find(s=>s.key===subj).monster);
+  $('#monster').classList.remove('dying','hit');
+  $('#monster-hp-bar').style.width='100%';
+  $('#monster-hp').classList.remove('low');
+  _combo=0;showCombo();
+  // 玩家角色使用当前宠物
+  const petFace=PET_STAGES[SAVE.pet.stage||0].face;
+  $('#player-char').textContent=petFace;
+  $('#player-name-battle').textContent=SAVE.name||'小勇者';
+  B.playerHp=3;B.playerMaxHp=3;updatePlayerHp();
+
+  renderQ();showScreen('battle');
+}
+function renderQ(){
+  _answerLock=false;
+  const q=B.qs[B.idx];B.hintStep=0;B.usedHelp=false;
+  // 更新进度条高亮当前题
+  $$('.prog-dot').forEach((d,i)=>{d.classList.toggle('current',i===B.idx)});
+  $('#battle-idx').textContent=`${B.idx+1}/${B.qs.length}`;
+  // 蓄力光效
+  const pc=$('#player-char');
+  if(pc){pc.classList.remove('attacking','hurt');pc.classList.add('charging')}
+  $('#q-topic').textContent=`${SUBJECTS.find(s=>s.key===B.subj).name} · ${q.topic||''}`;
+  $('#q-text').textContent=q.q;
+  // 拍照出题：始终显示原始作业照片
+  const photoArea=$('#q-photo-area');
+  photoArea.innerHTML='';photoArea.classList.remove('active');
+  if(B.photo){
+    photoArea.classList.add('active');
+    const img=document.createElement('img');img.className='q-photo';img.src=B.photo;
+    img.onclick=()=>{
+      const full=document.createElement('div');full.className='q-photo-full';
+      full.innerHTML='<img src="'+B.photo+'">';
+      full.onclick=()=>full.remove();
+      document.body.appendChild(full);
+    };
+    photoArea.appendChild(img);
+    const hint=document.createElement('div');hint.className='q-photo-hint';
+    hint.textContent='点击图片可放大查看';
+    photoArea.appendChild(hint);
+    if(q.needsImage&&q.imageDesc){
+      const desc=document.createElement('div');desc.className='q-img-desc';
+      desc.textContent='📷 '+q.imageDesc;
+      photoArea.appendChild(desc);
+    }
+  }
+  // 不自动朗读，用户点🔊按钮时才播放
+  const ow=$('#q-options'),iw=$('#q-input-area');
+  ow.innerHTML='';iw.classList.add('hidden');ow.classList.remove('hidden');
+  if(q.type==='choice'){
+    shuffle(q.options).forEach(op=>{
+      const d=document.createElement('div');d.className='opt';d.textContent=op;
+      d.onclick=()=>answerQ(op,d);ow.appendChild(d);
+    });
+  }else{
+    ow.classList.add('hidden');iw.classList.remove('hidden');
+    $('#q-input').value='';
+    setTimeout(()=>$('#q-input').focus(),100);
+    $('#q-submit').onclick=()=>answerQ($('#q-input').value.trim());
+    $('#q-input').onkeydown=e=>{if(e.key==='Enter')answerQ($('#q-input').value.trim())};
+  }
+}
+function updatePlayerHp(){
+  const pct=Math.max(0,B.playerHp/B.playerMaxHp*100);
+  $('#player-hp-bar').style.width=pct+'%';
+  $('#player-hp').classList.toggle('danger',pct<=34);
+}
+function loseBattle(){
+  sfx('bad');
+  const scene=$('#battle');
+  scene.classList.remove('screen-shake','screen-red-flash');void scene.offsetWidth;
+  scene.classList.add('screen-shake','screen-red-flash');
+  setTimeout(()=>scene.classList.remove('screen-shake','screen-red-flash'),500);
+  save();
+  setTimeout(()=>{
+    $('#defeat-sub').textContent=`答对 ${B.correct}/${B.qs.length} 题，再试一次一定能行！`;
+    $('#defeat').classList.add('show');
+  },600);
+}
+function normalize(s){return String(s||'').replace(/\s+/g,'').replace(/。$/,'').toLowerCase()}
+let _combo=0;
+function showCombo(){
+  const cd=$('#combo-display');
+  if(_combo<2){cd.classList.remove('show','mega');return}
+  cd.textContent=_combo>=5?`🔥 ${_combo} COMBO!`:_combo>=3?`⚡ ${_combo} COMBO!`:`${_combo} COMBO`;
+  cd.classList.toggle('mega',_combo>=5);
+  cd.classList.remove('show');void cd.offsetWidth;cd.classList.add('show');
+}
+function spawnDmg(x,y,text,crit){
+  const d=document.createElement('div');d.className='dmg-number'+(crit?' crit':'');
+  d.textContent=text;d.style.left=x+'px';d.style.top=y+'px';
+  document.body.appendChild(d);setTimeout(()=>d.remove(),1000);
+}
+function spawnSlash(x,y){
+  const s=document.createElement('div');s.className='slash-fx';
+  s.style.left=(x-60)+'px';s.style.top=(y-60)+'px';
+  document.body.appendChild(s);setTimeout(()=>s.remove(),500);
+}
+// 射击弹道：从 (sx,sy) 飞向 (tx,ty)，到达后回调 onHit
+function shootProjectile(sx,sy,tx,ty,opts,onHit){
+  const isMega=opts&&opts.mega;
+  sfx('shoot');
+  const el=document.createElement('div');
+  el.className='projectile'+(isMega?' mega':'');
+  el.style.left=sx+'px';el.style.top=sy+'px';
+  document.body.appendChild(el);
+  const dx=tx-sx,dy=ty-sy;
+  const dist=Math.sqrt(dx*dx+dy*dy);
+  const dur=Math.min(400,Math.max(200,dist*0.6)); // 飞行时间
+  const steps=Math.ceil(dur/16);
+  let step=0;
+  const trailClass='projectile-trail'+(isMega?' mega':'');
+  const anim=()=>{
+    step++;
+    const t=step/steps;
+    // 抛物线弧度
+    const arc=-Math.sin(t*Math.PI)*40;
+    const cx=sx+dx*t;
+    const cy=sy+dy*t+arc;
+    el.style.left=cx+'px';el.style.top=cy+'px';
+    // 拖尾
+    if(step%2===0){
+      const tr=document.createElement('div');tr.className=trailClass;
+      tr.style.left=cx+'px';tr.style.top=cy+'px';
+      document.body.appendChild(tr);setTimeout(()=>tr.remove(),300);
+    }
+    if(step>=steps){
+      el.remove();
+      if(onHit)onHit(tx,ty);
+    }else{
+      requestAnimationFrame(anim);
+    }
+  };
+  requestAnimationFrame(anim);
+}
+// 命中爆炸
+function spawnImpact(x,y,mega){
+  sfx(mega?'crithit':'hit');
+  const e=document.createElement('div');e.className='impact-fx'+(mega?' mega':'');
+  e.style.left=x+'px';e.style.top=y+'px';
+  document.body.appendChild(e);setTimeout(()=>e.remove(),600);
+}
+// Boss 射击（多发弹幕）
+function bossShoot(tx,ty){
+  sfx('bossshoot');
+  const rect=$('#monster').getBoundingClientRect();
+  const sx=rect.left+rect.width/2,sy=rect.top+rect.height/2;
+  const count=3;
+  for(let i=0;i<count;i++){
+    setTimeout(()=>{
+      const el=document.createElement('div');el.className='boss-bullet';
+      el.style.left=sx+'px';el.style.top=sy+'px';
+      document.body.appendChild(el);
+      const dx=tx-sx+rand(-30,30),dy=ty-sy+rand(-20,20);
+      const dist=Math.sqrt(dx*dx+dy*dy);
+      const dur=Math.min(350,Math.max(180,dist*0.5));
+      const steps=Math.ceil(dur/16);
+      let step=0;
+      const anim=()=>{
+        step++;
+        const t=step/steps;
+        const cx=sx+dx*t,cy=sy+dy*t-Math.sin(t*Math.PI)*20;
+        el.style.left=cx+'px';el.style.top=cy+'px';
+        if(step%3===0){
+          const tr=document.createElement('div');tr.className='boss-bullet-trail';
+          tr.style.left=cx+'px';tr.style.top=cy+'px';
+          document.body.appendChild(tr);setTimeout(()=>tr.remove(),250);
+        }
+        if(step>=steps){
+          el.remove();
+          sfx('bosshit');
+          const e2=document.createElement('div');e2.className='impact-fx';
+          e2.style.left=cx+'px';e2.style.top=cy+'px';
+          document.body.appendChild(e2);setTimeout(()=>e2.remove(),600);
+        }else{requestAnimationFrame(anim)}
+      };
+      requestAnimationFrame(anim);
+    },i*120);
+  }
+}
+let _answerLock=false;
+function answerQ(ans,el){
+  if(_answerLock)return;
+  if(!ans){toast('答案不能为空哦～');return}
+  _answerLock=true;
+  // 禁用所有选项防止重复点击
+  $$('.opt').forEach(o=>{o.style.pointerEvents='none'});
+  const pc0=$('#player-char');if(pc0)pc0.classList.remove('charging');
+  const q=B.qs[B.idx];
+  const ok=normalize(ans)===normalize(q.answer);
+  if(ok){
+    _combo++;
+    SAVE.stats.correct++;B.correct++;sfx('good');
+    B.results[B.idx]='correct';
+    const dots=$$('.prog-dot');if(dots[B.idx])dots[B.idx].classList.add('correct');
+    // 连击鼓励
+    const cheers=_combo>=5?['无敌了！','超神！','太强了！','连击风暴！']:
+                 _combo>=3?['连击！','帅呆了！','势如破竹！']:
+                           ['答对啦！','太棒了！','真聪明！','就是这样！','厉害！'];
+    speak(pick(cheers),{rate:1.1});
+    if(el)el.classList.add('correct');
+    showCombo();
+    // 玩家射击动画
+    const pc=$('#player-char');
+    const pcR=pc.getBoundingClientRect();
+    const monR=$('#monster').getBoundingClientRect();
+    const sx=pcR.left+pcR.width/2, sy=pcR.top;
+    const tx=monR.left+monR.width/2, ty=monR.top+monR.height/3;
+    const isCrit=_combo>=3;
+    const isMega=_combo>=5;
+    // 射击后坐力
+    pc.classList.remove('attacking');void pc.offsetWidth;pc.classList.add('attacking');
+    setTimeout(()=>pc.classList.remove('attacking'),500);
+    // 连击多发弹幕
+    const shots=isMega?3:isCrit?2:1;
+    for(let i=0;i<shots;i++){
+      setTimeout(()=>{
+        shootProjectile(sx,sy,tx+rand(-15,15),ty+rand(-10,10),{mega:isMega},
+        (hx,hy)=>{
+          // 命中回调
+          spawnImpact(hx,hy,isMega);
+          $('#monster').classList.remove('hit');void $('#monster').offsetWidth;$('#monster').classList.add('hit');
+          const fxEmojis=['💥','✨','⚡','💫','🌟','☄️'];
+          for(let j=0;j<(isCrit?3:1);j++){
+            spawnParticle(hx+rand(-25,25),hy+rand(-15,15),pick(fxEmojis));
+          }
+          if(i===shots-1){
+            // 最后一发弹着点：伤害数字 + 屏幕震动
+            const dmgText=isMega?`-${20*_combo}!!`:isCrit?`-${20*_combo}!`:`-${20}`;
+            spawnDmg(hx+rand(-15,15),hy-30,dmgText,isCrit);
+            const scene=$('#battle');
+            scene.classList.remove('screen-shake');void scene.offsetWidth;scene.classList.add('screen-shake');
+            setTimeout(()=>{scene.classList.remove('screen-shake');$('#monster').classList.remove('hit')},500);
+          }
+        });
+      },i*120);
+    }
+    // HP
+    const hpPct=Math.max(0,100-((B.idx+1)/B.qs.length)*100);
+    $('#monster-hp-bar').style.width=hpPct+'%';
+    $('#monster-hp').classList.toggle('low',hpPct<=30);
+    reward(2,0,5);
+    setTimeout(nextQ,900);
+  }else{
+    _combo=0;showCombo();
+    SAVE.stats.wrong++;B.wrong++;sfx('bad');
+    B.results[B.idx]='wrong';
+    const dots2=$$('.prog-dot');if(dots2[B.idx])dots2[B.idx].classList.add('wrong');
+    B.playerHp--;updatePlayerHp();
+    // 记录错题
+    addWrongQuestion(q,ans);
+    if(el){el.classList.add('wrong');setTimeout(()=>el.classList.remove('wrong'),600)}
+    else{$('#q-input').style.animation='shake .4s';setTimeout(()=>$('#q-input').style.animation='',500)}
+    // Boss 射击反击
+    const pc=$('#player-char');
+    const pcR2=pc.getBoundingClientRect();
+    bossShoot(pcR2.left+pcR2.width/2,pcR2.top+pcR2.height/2);
+    // 玩家受伤
+    setTimeout(()=>{
+      pc.classList.remove('hurt');void pc.offsetWidth;pc.classList.add('hurt');
+      setTimeout(()=>pc.classList.remove('hurt'),550);
+      // 屏幕红闪 + 震动
+      const scene=$('#battle');
+      scene.classList.remove('screen-shake','screen-red-flash');void scene.offsetWidth;
+      scene.classList.add('screen-shake','screen-red-flash');
+      setTimeout(()=>scene.classList.remove('screen-shake','screen-red-flash'),450);
+    },350);
+    // 血量归零 → 失败，否则蘑菇博士讲解
+    if(B.playerHp<=0){setTimeout(()=>loseBattle(),800)}
+    else{setTimeout(()=>openAI('wrong'),800)}
+  }
+  save();
+}
+function nextQ(){B.idx++;if(B.idx>=B.qs.length)winBattle();else renderQ()}
+function winBattle(){
+  sfx('explode');
+  // Boss 击败爆炸特效
+  const rect=$('#monster').getBoundingClientRect();
+  const cx=rect.left+rect.width/2,cy=rect.top+rect.height/3;
+  const boomEmojis=['💥','🔥','⚡','✨','💫','🌟','☄️','🎆'];
+  for(let i=0;i<12;i++){
+    setTimeout(()=>spawnParticle(cx+rand(-60,60),cy+rand(-40,40),pick(boomEmojis)),i*50);
+  }
+  spawnSlash(cx,cy);
+  setTimeout(()=>spawnSlash(cx-30,cy+20),100);
+  setTimeout(()=>spawnSlash(cx+30,cy-20),200);
+  confetti(80);
+  $('#monster').classList.add('dying');
+  SAVE.stats.battles++;SAVE.stats.levelsCleared++;SAVE.battleCount++;
+  const total=B.qs.length,acc=B.correct/total;
+  const stars=acc===1?3:acc>=0.8?2:1;
+  const key=`${B.g}-${B.subj}-${B.lv}`;
+  SAVE.clearedLevels[key]=Math.max(SAVE.clearedLevels[key]||0,stars);
+  const allCleared=subjectsForGrade(B.g).every(s=>(SAVE.clearedLevels[`${B.g}-${s.key}-3`]||0)>0);
+  if(allCleared && B.g<6 && !SAVE.unlocked.includes(B.g+1)){
+    SAVE.unlocked.push(B.g+1);SAVE.unlocked.sort((a,b)=>a-b);
+    toast(`🎊 解锁新大陆：${CONTINENTS[B.g].name}！`);
+  }
+  const rw={stars:stars*5+B.g*2,gems:stars,xp:total*10};
+  reward(rw.stars,rw.gems,rw.xp);
+  SAVE.pet.xp+=stars*3+B.correct;
+  while(SAVE.pet.xp>=SAVE.pet.lv*30){SAVE.pet.xp-=SAVE.pet.lv*30;SAVE.pet.lv++;evolvePet()}
+  save();checkAchievements();
+  setTimeout(()=>{
+    $('#victory-title').textContent=stars===3?'完 美 通 关 ！':stars===2?'漂 亮 通 关 ！':'通 关 成 功 ！';
+    $('#victory-sub').textContent=`正确率 ${Math.round(acc*100)}% · 答对 ${B.correct}/${total}`;
+    $('#victory-mascot').textContent=stars===3?'🏆':stars===2?'🥈':'🥉';
+    $$('#victory-stars .star').forEach((s,i)=>{s.classList.toggle('lit',i<stars)});
+    $('#rw-star').textContent='+'+rw.stars;
+    $('#rw-gem').textContent='+'+rw.gems;
+    $('#rw-xp').textContent='+'+rw.xp;
+    $('#victory').classList.add('show');
+  },700);
+  if(SAVE.battleCount%4===0)setTimeout(showRest,2200);
+}
+
+// ------------------ AI 讲题 ------------------
+function addSpeakBtn(bubble,textFn){
+  const b=document.createElement('button');b.className='speak-btn';b.textContent='🔊';b.title='朗读';
+  b.onclick=e=>{e.stopPropagation();speak(textFn(),{btn:b})};
+  bubble.appendChild(b);
+  bubble.onclick=()=>speak(textFn(),{btn:b});
+}
+function openAI(reason='manual'){
+  const q=B.qs[B.idx];
+  stopSpeak();
+  const box=$('#ai-bubbles');box.innerHTML='';
+  const head=document.createElement('div');head.className='ai-bubble';
+  const imgInfo=q.needsImage&&q.imageDesc?`。图中画的是：${q.imageDesc}`:'';
+  const headText=reason==='wrong'
+    ? `哎呀，答错了不要紧！我是蘑菇博士，我们一步一步来看这道题：${q.q}${imgInfo}`
+    : `没问题，这道题我们一步一步想：${q.q}${imgInfo}`;
+  head.innerHTML=reason==='wrong'
+    ? `哎呀~ 答错不要紧！我是蘑菇博士，我们一步步来看这题：<br><b style="color:#ffcf4b">${q.q}</b>${q.needsImage&&q.imageDesc?'<br><span style="font-size:13px;color:#9ad6ff">📷 '+q.imageDesc+'</span>':''}`
+    : `没问题！这题我们分步想：<br><b style="color:#ffcf4b">${q.q}</b>`;
+  addSpeakBtn(head,()=>headText);
+  box.appendChild(head);
+  B.hintStep=0;B.usedHelp=true;
+  $('#ai-modal').classList.add('show');
+  // 一次性显示所有提示和答案
+  const hints=q.hints||[];
+  const labels=['💡 提示一','🔑 提示二','📘 关键一步'];
+  hints.forEach((h,i)=>{
+    const b=document.createElement('div');b.className='ai-bubble';
+    b.innerHTML=`<div class="step-label">${labels[i]||'💡 提示'}</div>${h}`;
+    addSpeakBtn(b,()=>h);
+    box.appendChild(b);
+  });
+  // 最终答案
+  const fb=document.createElement('div');fb.className='ai-bubble correct-final';
+  const finalText=`正确答案是 ${q.answer}。${q.explain||''}`;
+  fb.innerHTML=`<div class="step-label">最终解答</div>正确答案是 <b style="color:#6cf0a1">${q.answer}</b>。<br>${q.explain||''}`;
+  addSpeakBtn(fb,()=>finalText);
+  box.appendChild(fb);
+  $('#ai-next').disabled=true;$('#ai-next').style.opacity=.4;
+  box.scrollTop=box.scrollHeight;
+}
+function typeBubbleNext(){
+  const q=B.qs[B.idx];
+  const box=$('#ai-bubbles');
+  if(B.hintStep>=q.hints.length){
+    const b=document.createElement('div');b.className='ai-bubble correct-final';
+    const finalText=`正确答案是 ${q.answer}。${q.explain||''}`;
+    b.innerHTML=`<div class="step-label">最终解答</div>正确答案是 <b style="color:#6cf0a1">${q.answer}</b>。<br>${q.explain||''}`;
+    addSpeakBtn(b,()=>finalText);
+    box.appendChild(b);
+    $('#ai-next').disabled=true;$('#ai-next').style.opacity=.4;
+    box.scrollTop=box.scrollHeight;
+    speak(finalText,{queue:true});
+    return;
+  }
+  const b=document.createElement('div');b.className='ai-bubble';
+  const label=['💡 提示一','🔑 提示二','📘 关键一步'][B.hintStep]||'💡 提示';
+  b.innerHTML=`<div class="step-label">${label}</div><span class="typing"><span class="typing-dot"></span><span class="typing-dot"></span><span class="typing-dot"></span></span>`;
+  box.appendChild(b);
+  const full=q.hints[B.hintStep];B.hintStep++;
+  setTimeout(()=>{
+    b.querySelector('.typing').remove();
+    const span=document.createElement('span');b.appendChild(span);
+    let i=0;
+    const tick=setInterval(()=>{
+      span.textContent=full.slice(0,i++);
+      box.scrollTop=box.scrollHeight;
+      if(i>full.length){
+        clearInterval(tick);
+        addSpeakBtn(b,()=>full);
+        speak(full,{queue:true}); // 打字完成就朗读（队列模式，等前面播完）
+      }
+    },25);
+  },420);
+  $('#ai-next').disabled=false;$('#ai-next').style.opacity=1;
+}
+function closeAI(){$('#ai-modal').classList.remove('show');_answerLock=false}
+function aiGotIt(){
+  closeAI();
+  const q=B.qs[B.idx];
+  if(q.type==='input'){toast('已记录讲解过～继续下一题');setTimeout(nextQ,300)}
+}
+
+// ------------------ 宠物 ------------------
+const PET_STAGES=[
+  {name:'小鹦鹉',face:'🦜',desc:'刚认识的小伙伴，羽毛还没长齐呢～'},
+  {name:'机灵猫',face:'🐱',desc:'越来越机灵啦！答题速度飞快。'},
+  {name:'勇敢狐',face:'🦊',desc:'聪明又勇敢，难题也不怕！'},
+  {name:'闪耀龙',face:'🐲',desc:'传说中的小龙，浑身闪闪发光！'},
+  {name:'神兽凤凰',face:'🦅',desc:'传说级神兽伙伴，无所不能！'},
+];
+function evolvePet(){
+  const thresholds=[0,2,5,10,20];
+  let stage=0;thresholds.forEach((th,i)=>{if(SAVE.pet.lv>=th)stage=i});
+  if(stage!==SAVE.pet.stage){
+    SAVE.pet.stage=stage;SAVE.pet.face=PET_STAGES[stage].face;SAVE.pet.name=PET_STAGES[stage].name;
+    toast(`🌟 ${SAVE.pet.name} 进化啦！`);confetti(50);
+  }
+  save();
+}
+function renderPet(){
+  evolvePet();
+  const stage=PET_STAGES[SAVE.pet.stage];
+  const need=SAVE.pet.lv*30;
+  const pct=Math.round(SAVE.pet.xp/need*100);
+  $('#pet-body').innerHTML=`
+    <div class="pet-card">
+      <div class="pet-face">${stage.face}</div>
+      <div class="pet-name">${stage.name}</div>
+      <div class="pet-lv">Lv ${SAVE.pet.lv}</div>
+      <div class="pet-bar"><div style="width:${pct}%"></div></div>
+      <div class="pet-caption">${stage.desc}<br>距离下次升级还差 ${need-SAVE.pet.xp} 经验</div>
+    </div>
+    <div class="stat-grid">
+      <div class="stat-tile"><div class="n">${SAVE.stats.correct}</div><div class="l">总答对</div></div>
+      <div class="stat-tile"><div class="n">${SAVE.stats.levelsCleared}</div><div class="l">通关次数</div></div>
+      <div class="stat-tile"><div class="n">${SAVE.lv}</div><div class="l">冒险者Lv</div></div>
+      <div class="stat-tile"><div class="n">${SAVE.streak}</div><div class="l">连续登录</div></div>
+    </div>
+    <div style="background:var(--c-panel);padding:14px;border-radius:16px;border:1px solid rgba(255,255,255,.1);font-size:13px;color:var(--c-muted);line-height:1.7">
+      💡 每答对一道题，${stage.name}就会获得经验；完美通关还额外获得宝石哦！
+    </div>`;
+}
+
+// ------------------ 商店 ------------------
+const SHOP=[
+  {id:'hat_wiz',n:'法师帽',ic:'🎩',d:'戴上更有学者范',price:30,type:'star'},
+  {id:'hat_crown',n:'小皇冠',ic:'👑',d:'威风凛凛的标志',price:80,type:'star'},
+  {id:'wand',n:'魔法棒',ic:'🪄',d:'答题更有自信',price:50,type:'star'},
+  {id:'pet_sk1',n:'糖果皮肤',ic:'🍬',d:'给伙伴换糖果装扮',price:5,type:'gem'},
+  {id:'pet_sk2',n:'星空皮肤',ic:'🌠',d:'伙伴也爱看星星',price:8,type:'gem'},
+  {id:'hint_pack',n:'提示卡×3',ic:'💡',d:'题目卡住的时候用',price:10,type:'star'},
+  {id:'skip_pack',n:'跳过卡×3',ic:'⏭️',d:'直接换一题',price:15,type:'star'},
+  {id:'xp_boost',n:'经验药水',ic:'🧪',d:'下次通关经验+50%',price:12,type:'gem'},
+];
+function renderShop(){
+  $('#shop-body').innerHTML=`
+    <div style="display:flex;gap:10px;margin-bottom:12px">
+      <div class="stat-tile" style="flex:1"><div class="n">${SAVE.stars} ⭐</div><div class="l">星星</div></div>
+      <div class="stat-tile" style="flex:1"><div class="n">${SAVE.gems} 💎</div><div class="l">宝石</div></div>
+    </div>
+    <div class="shop-grid" id="shop-grid"></div>`;
+  const g=$('#shop-grid');
+  SHOP.forEach(it=>{
+    const owned=SAVE.owned.includes(it.id);
+    const d=document.createElement('div');d.className='shop-item'+(owned?' owned':'');
+    d.innerHTML=`<span class="ic">${it.ic}</span>
+      <div class="n">${it.n}</div><div class="d">${it.d}</div>
+      <div class="price">${owned?'已拥有':it.price+(it.type==='star'?' ⭐':' 💎')}</div>`;
+    d.onclick=()=>{
+      if(owned){toast('已经拥有啦');return}
+      if(it.type==='star'&&SAVE.stars<it.price){toast('星星不够～答题赚取吧');return}
+      if(it.type==='gem'&&SAVE.gems<it.price){toast('宝石不够～通关完美关卡获得');return}
+      if(it.type==='star')SAVE.stars-=it.price;else SAVE.gems-=it.price;
+      SAVE.owned.push(it.id);save();sfx('coin');toast('🎁 购买成功');
+      renderShop();updateHUD();
+    };
+    g.appendChild(d);
+  });
+}
+
+// ------------------ 成就 ------------------
+const ACHV=[
+  {id:'first_battle',n:'初试身手',d:'第一次通关',ic:'🎯',check:s=>s.stats.levelsCleared>=1},
+  {id:'ten_correct',n:'小有成就',d:'累计答对10题',ic:'✨',check:s=>s.stats.correct>=10,prog:s=>Math.min(1,s.stats.correct/10)},
+  {id:'fifty_correct',n:'博学多才',d:'累计答对50题',ic:'🌟',check:s=>s.stats.correct>=50,prog:s=>Math.min(1,s.stats.correct/50)},
+  {id:'hundred_correct',n:'知识达人',d:'累计答对100题',ic:'🏅',check:s=>s.stats.correct>=100,prog:s=>Math.min(1,s.stats.correct/100)},
+  {id:'all_subjects',n:'文武全才',d:'语数英都通关一次',ic:'🎨',check:s=>SUBJECTS.every(sj=>Object.keys(s.clearedLevels).some(k=>k.includes('-'+sj.key+'-')))},
+  {id:'streak3',n:'持之以恒',d:'连续登录3天',ic:'📅',check:s=>s.streak>=3,prog:s=>Math.min(1,s.streak/3)},
+  {id:'pet_lv5',n:'好伙伴',d:'把伙伴养到Lv5',ic:'🐥',check:s=>s.pet.lv>=5,prog:s=>Math.min(1,s.pet.lv/5)},
+  {id:'grade_conq',n:'征服者',d:'通关任意一个大陆',ic:'🏰',check:s=>CONTINENTS.some(c=>SUBJECTS.every(sj=>(s.clearedLevels[`${c.g}-${sj.key}-3`]||0)>0))},
+];
+function checkAchievements(){
+  ACHV.forEach(a=>{
+    if(!SAVE.achv[a.id]&&a.check(SAVE)){
+      SAVE.achv[a.id]=Date.now();
+      toast(`🏆 获得成就：${a.n}`);
+      reward(5,1,20);confetti(30);
+    }
+  });
+}
+function renderProfile(){
+  const done=Object.keys(SAVE.achv).length;
+  $('#profile-body').innerHTML=`
+    <div style="display:flex;align-items:center;gap:14px;background:var(--c-panel);padding:16px;border-radius:18px;margin-bottom:14px;border:1px solid rgba(255,255,255,.1)">
+      <div style="width:60px;height:60px;border-radius:50%;background:linear-gradient(180deg,#ffdf87,#ff9246);display:grid;place-items:center;font-size:36px">${SAVE.avatar}</div>
+      <div><div style="font-size:18px;font-weight:800">${SAVE.name} · Lv${SAVE.lv}</div>
+      <div style="font-size:12px;color:var(--c-muted)">${SAVE.grade} 年级冒险者 · 成就 ${done}/${ACHV.length}</div></div>
+    </div>
+    <div class="stat-grid">
+      <div class="stat-tile"><div class="n">${SAVE.stats.correct}</div><div class="l">总答对</div></div>
+      <div class="stat-tile"><div class="n">${SAVE.stats.wrong}</div><div class="l">答错修正</div></div>
+      <div class="stat-tile"><div class="n">${SAVE.stats.battles}</div><div class="l">战斗次数</div></div>
+      <div class="stat-tile"><div class="n">${Math.round(SAVE.stats.correct/(SAVE.stats.correct+SAVE.stats.wrong||1)*100)}%</div><div class="l">正确率</div></div>
+    </div>
+    <h3 style="margin:18px 0 10px;font-size:16px">🏆 成就</h3>
+    <div id="achv-list"></div>
+    <div style="margin-top:20px;display:flex;gap:8px">
+      <button class="btn ghost block small" id="parent-btn">👨‍👩‍👧 家长报告</button>
+      <button class="btn danger block small" id="reset-btn">重置存档</button>
+    </div>`;
+  const al=$('#achv-list');
+  ACHV.forEach(a=>{
+    const isDone=!!SAVE.achv[a.id];
+    const prog=a.prog?a.prog(SAVE):(isDone?1:0);
+    const row=document.createElement('div');row.className='achv-row'+(isDone?' done':'');
+    row.innerHTML=`<div class="achv-ic">${isDone?a.ic:'🔒'}</div>
+      <div class="achv-body" style="flex:1"><h4>${a.n}</h4>
+      <p>${a.d}${isDone?' · 已完成':''}</p>
+      ${a.prog?`<div class="achv-prog"><div style="width:${prog*100}%"></div></div>`:''}</div>`;
+    al.appendChild(row);
+  });
+  $('#parent-btn').onclick=showParentReport;
+  $('#reset-btn').onclick=async()=>{if(await showConfirm({icon:'⚠️',title:'重置所有进度？',msg:'该操作不可恢复，星星、宝石、通关记录全部清零',yes:'确定重置',no:'取消'})){localStorage.removeItem(SAVE_KEY);location.reload()}};
+}
+function showParentReport(){
+  const acc=Math.round(SAVE.stats.correct/(SAVE.stats.correct+SAVE.stats.wrong||1)*100);
+  const subjStats={};
+  SUBJECTS.forEach(s=>{
+    subjStats[s.key]={cleared:0,stars:0};
+    for(let g=1;g<=6;g++) for(let lv=1;lv<=3;lv++){
+      const k=`${g}-${s.key}-${lv}`;
+      if(SAVE.clearedLevels[k]){subjStats[s.key].cleared++;subjStats[s.key].stars+=SAVE.clearedLevels[k]}
+    }
+  });
+  const sciLine=subjStats.science?`<tr><td>🔬 科学</td><td>${subjStats.science.cleared} 关</td><td>${subjStats.science.stars} ⭐</td></tr>`:'';
+  const advice=acc>=85?'✅ 表现非常棒！可以尝试更高难度的挑战关卡。':acc>=65?'👍 进步明显，建议重点巩固错题，多听蘑菇博士讲解。':'🌱 基础还需加强，建议每天练习入门关卡，答错时认真听讲解。';
+  const el=document.createElement('div');
+  el.style.cssText='position:fixed;inset:0;z-index:300;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center;padding:20px';
+  el.innerHTML=`<div style="background:linear-gradient(180deg,#1e2357,#2d1f5a);border-radius:20px;padding:24px;max-width:500px;width:100%;max-height:85vh;overflow-y:auto;color:#fff;font-size:15px;line-height:1.8;box-shadow:0 20px 60px rgba(0,0,0,.5);border:1px solid rgba(255,255,255,.1)">
+    <h2 style="text-align:center;margin:0 0 16px;font-size:22px">📊 ${SAVE.name} 的学习报告</h2>
+    <div style="display:flex;justify-content:space-around;margin-bottom:16px;text-align:center">
+      <div><div style="font-size:28px;font-weight:900;color:#ffcf4b">Lv${SAVE.lv}</div><div style="font-size:12px;color:#9da4c7">冒险等级</div></div>
+      <div><div style="font-size:28px;font-weight:900;color:#6cf0a1">${acc}%</div><div style="font-size:12px;color:#9da4c7">正确率</div></div>
+      <div><div style="font-size:28px;font-weight:900;color:#9ad6ff">${SAVE.streak}</div><div style="font-size:12px;color:#9da4c7">连续登录</div></div>
+    </div>
+    <div style="background:rgba(0,0,0,.2);border-radius:12px;padding:14px;margin-bottom:14px">
+      <div style="font-weight:700;margin-bottom:8px">📈 累计数据</div>
+      <div>✅ 答对题目：<b>${SAVE.stats.correct}</b> 道</div>
+      <div>❌ 答错修正：<b>${SAVE.stats.wrong}</b> 道</div>
+      <div>🏰 通关关卡：<b>${SAVE.stats.levelsCleared}</b> 关</div>
+      <div>⚔️ 总战斗数：<b>${SAVE.stats.battles}</b> 次</div>
+    </div>
+    <div style="background:rgba(0,0,0,.2);border-radius:12px;padding:14px;margin-bottom:14px">
+      <div style="font-weight:700;margin-bottom:8px">📚 分科情况</div>
+      <table style="width:100%;border-collapse:collapse;font-size:14px">
+        <tr style="color:#9da4c7"><td>学科</td><td>通关</td><td>星星</td></tr>
+        <tr><td>🔢 数学</td><td>${subjStats.math.cleared} 关</td><td>${subjStats.math.stars} ⭐</td></tr>
+        <tr><td>📖 语文</td><td>${subjStats.chinese.cleared} 关</td><td>${subjStats.chinese.stars} ⭐</td></tr>
+        <tr><td>🔤 英语</td><td>${subjStats.english.cleared} 关</td><td>${subjStats.english.stars} ⭐</td></tr>
+        ${sciLine}
+      </table>
+    </div>
+    <div style="background:rgba(255,207,75,.1);border:1px solid rgba(255,207,75,.2);border-radius:12px;padding:14px;margin-bottom:16px">
+      <div style="font-weight:700;margin-bottom:6px">💡 学习建议</div>
+      <div style="font-size:14px">${advice}</div>
+    </div>
+    <button onclick="this.closest('div[style]').remove()" style="display:block;width:100%;padding:12px;border-radius:14px;background:linear-gradient(135deg,#6cf0a1,#3acb82);border:none;color:#1a1f4a;font-size:16px;font-weight:700;cursor:pointer">关闭报告</button>
+  </div>`;
+  document.body.appendChild(el);
+  el.onclick=e=>{if(e.target===el)el.remove()};
+}
+function showRest(){
+  $('#rest').classList.add('show');
+  let sec=20;$('#rest-timer').textContent=sec;
+  const t=setInterval(()=>{sec--;$('#rest-timer').textContent=sec;if(sec<=0){clearInterval(t);$('#rest').classList.remove('show')}},1000);
+  $('#rest-skip').onclick=()=>{clearInterval(t);$('#rest').classList.remove('show')};
+}
+
+// ------------------ 页面切换 ------------------
+function openPage(id){
+  $('#page-'+id).classList.add('show');
+  if(id==='pet')renderPet();if(id==='shop')renderShop();if(id==='profile')renderProfile();if(id==='wrongbook')renderWrongBook();
+}
+function closePages(){$$('.page').forEach(p=>p.classList.remove('show'))}
+
+// ------------------ 事件绑定 ------------------
+function bind(){
+  $$('[data-back]').forEach(b=>b.onclick=()=>{showScreen(b.dataset.back);if(b.dataset.back==='map')renderMap()});
+  $$('[data-close-page]').forEach(b=>b.onclick=closePages);
+  $$('.nav-item').forEach(n=>n.onclick=()=>{
+    const nav=n.dataset.nav;
+    if(nav==='map'){closePages();showScreen('map');renderMap()}
+    else openPage(nav);
+  });
+  $('#open-profile').onclick=()=>openPage('pet');
+  $('#open-settings').onclick=()=>{openPage('ai-cfg');renderAICfg()};
+  $('#switch-user').onclick=()=>{closePages();initStart();showScreen('start')};
+  // 语音开关 + 题目朗读按钮
+  const vt=$('#voice-toggle-map');if(vt){vt.textContent=TTS.enabled?'🔊':'🔇';vt.classList.toggle('off',!TTS.enabled);vt.onclick=toggleVoice}
+  $('#speak-q').onclick=()=>{
+    const q=B&&B.qs&&B.qs[B.idx];if(!q)return;
+    let t=q.q;if(q.type==='choice'&&q.options)t+='。选项：'+q.options.join('；');
+    speak(t,{btn:$('#speak-q')});
+  };
+  // 切换屏幕时停止朗读
+  $('#battle-quit').addEventListener('click',stopSpeak);
+  $('#ai-close').addEventListener('click',stopSpeak);
+  $('#battle-quit').onclick=async()=>{if(await showConfirm({icon:'🏃',title:'放弃本次冒险？',msg:'当前进度不会保存哦',yes:'确定离开',no:'继续战斗'}))showScreen('region')};
+  $('#ai-help').onclick=()=>openAI('manual');
+  $('#skip-q').onclick=()=>{
+    if(SAVE.stars<3){toast('跳过需要 3 ⭐，再答几道题吧～');return}
+    SAVE.stars-=3;updateHUD();save();sfx('coin');nextQ();
+  };
+  $('#ai-close').onclick=closeAI;
+  $('#ai-next').onclick=typeBubbleNext;
+  $('#ai-got-it').onclick=aiGotIt;
+  $('#v-back').onclick=()=>{$('#victory').classList.remove('show');closePages();openRegion(curContinent)};
+  $('#v-next').onclick=()=>{
+    $('#victory').classList.remove('show');
+    if(B.lv<3)startBattle(B.g,B.subj,B.lv+1);
+    else openRegion(curContinent);
+  };
+  $('#d-back').onclick=()=>{$('#defeat').classList.remove('show');closePages();openRegion(curContinent)};
+  $('#d-retry').onclick=()=>{$('#defeat').classList.remove('show');startBattle(B.g,B.subj,B.lv)};
+  $('#ai-modal').onclick=e=>{if(e.target.id==='ai-modal')closeAI()};
+}
+
+// ============================================================
+// ========== AI 拍照出题 模块 ==========
+// ============================================================
+const AI_PRESETS=[
+  {id:'openai',name:'OpenAI GPT-4o',sub:'浏览器可直连 ✅',url:'https://api.openai.com/v1/chat/completions',model:'gpt-4o-mini',keyHint:'OpenAI API Key'},
+  {id:'kimi',name:'Kimi (Moonshot) 视觉',sub:'需要代理·见提示',url:'https://api.moonshot.cn/v1/chat/completions',model:'moonshot-v1-8k-vision-preview',keyHint:'platform.moonshot.cn API Key'},
+  {id:'qwen',name:'通义千问-VL',sub:'需要代理·见提示',url:'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions',model:'qwen-vl-plus',keyHint:'阿里 DashScope API Key'},
+  {id:'zhipu',name:'智谱 GLM-4V',sub:'需要代理·见提示',url:'https://open.bigmodel.cn/api/paas/v4/chat/completions',model:'glm-4v-plus',keyHint:'智谱 API Key'},
+  {id:'custom',name:'自定义代理 (OpenAI 兼容)',sub:'填入你的代理地址',url:'',model:'',keyHint:'你的 API Key'},
+];
+const AI_CFG_KEY='scholar_ai_cfg_v1';
+const AI_DEFAULTS={
+  preset:'openai',
+  url:'https://openrouter.ai/api/v1/chat/completions',
+  model:'openai/gpt-4o',
+  key:'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',
+  grade:1,
+  tts_url:'http://192.168.3.79:8787/tts',
+  tts_voice:'saturn_zh_female_keainvsheng_tob',
+  tts_rate:0.95,
+};
+function loadAICfg(){try{const c=JSON.parse(localStorage.getItem(AI_CFG_KEY))||{};return {...AI_DEFAULTS,...c}}catch(e){return {...AI_DEFAULTS}}}
+function saveAICfg(c){localStorage.setItem(AI_CFG_KEY,JSON.stringify(c))}
+
+function renderAICfg(){
+  const cfg=loadAICfg();
+  const pr=$('#preset-row');pr.innerHTML='';
+  AI_PRESETS.forEach(p=>{
+    const d=document.createElement('div');d.className='preset-opt'+(cfg.preset===p.id?' selected':'');
+    d.innerHTML=`<div style="font-weight:700">${p.name}</div><div class="sub">${p.sub}</div>`;
+    d.onclick=()=>{
+      $$('#preset-row .preset-opt').forEach(x=>x.classList.remove('selected'));
+      d.classList.add('selected');
+      cfg.preset=p.id;
+      if(p.url)$('#cfg-url').value=p.url;
+      if(p.model)$('#cfg-model').value=p.model;
+      $('#cfg-key').placeholder=p.keyHint;
+    };
+    pr.appendChild(d);
+  });
+  $('#cfg-url').value=cfg.url||'';
+  $('#cfg-model').value=cfg.model||'';
+  $('#cfg-key').value=cfg.key||'';
+  $('#cfg-grade').value=cfg.grade||SAVE.grade||1;
+  if($('#cfg-tts-url'))   $('#cfg-tts-url').value   = cfg.tts_url   || '';
+  if($('#cfg-tts-voice')) $('#cfg-tts-voice').value = cfg.tts_voice || 'saturn_zh_female_keainvsheng_tob';
+  if($('#cfg-tts-rate'))  $('#cfg-tts-rate').value  = cfg.tts_rate  || 0.95;
+}
+function saveCfgFromUI(){
+  const cfg={
+    preset:loadAICfg().preset||'qwen',
+    url:$('#cfg-url').value.trim(),
+    model:$('#cfg-model').value.trim(),
+    key:$('#cfg-key').value.trim(),
+    grade:parseInt($('#cfg-grade').value)||1,
+    tts_url  : ($('#cfg-tts-url')   && $('#cfg-tts-url').value.trim())   || '',
+    tts_voice: ($('#cfg-tts-voice') && $('#cfg-tts-voice').value)        || 'saturn_zh_female_keainvsheng_tob',
+    tts_rate : ($('#cfg-tts-rate')  && parseFloat($('#cfg-tts-rate').value))||0.95,
+  };
+  saveAICfg(cfg);
+  return cfg;
+}
+
+// 将文件转 base64
+function fileToBase64(f){return new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result);r.onerror=rej;r.readAsDataURL(f)})}
+
+// 将模型返回的一道题规范化为内部格式；不合格返回 null
+function normalizeQuestion(q){
+  const n={
+    q:String(q.q||'').trim()||'(题目为空)',
+    type:q.type==='choice'?'choice':'input',
+    options:Array.isArray(q.options)?q.options.map(String):undefined,
+    answer:String(q.answer!=null?q.answer:'').trim(),
+    hints:Array.isArray(q.hints)&&q.hints.length?q.hints.slice(0,3):['再读一遍题目','想想用什么方法','仔细算一算'],
+    explain:q.explain||'',
+    topic:q.topic||'拍照题',
+    needsImage:!!q.needsImage,
+    imageDesc:q.imageDesc||'',
+  };
+  if(!n.q||!n.answer)return null;
+  return n;
+}
+
+// 调用 AI 识别图片并出题（流式：边生成边回调 onQuestion(q, count)）
+async function callAIVision(base64,grade,onQuestion){
+  const cfg=loadAICfg();
+  if(!cfg.url||!cfg.key||!cfg.model){throw new Error('请先在 ⚙️ 设置中填入 API 信息')}
+  const systemPrompt=`你是一位耐心的小学${grade}年级作业辅导老师。我会给你一张小学作业图片。
+
+## 核心规则（必须严格遵守）
+
+**拆分规则**：每一个需要学生独立填写/选择的空位 = 一道独立的题目。
+- "50+6○65  11-3○12-3" → 这是2道题，不是1道
+- "( )-8=5  14-5=( )-6  36-30=96-( )" → 这是3道题，不是1道
+- "看图列式计算 1. ... 2. ..." → 这是2道题
+- 一个大题下面有6个小空，就是6道题
+- **绝对禁止合并**：不要把多个小题合成一道大题
+
+**完整性规则**：宁可多识别，不要漏掉任何一道。图片中每一个需要填空、选择、计算、画图的位置都必须识别。
+
+## 输出要求
+对每道题：
+1. q：题目原文。如果是大题的子题，在前面加上大题的题干。例如"在○里填上>、<或=：50+6○65"
+2. answer：正确答案
+3. hints：3条循序渐进的提示
+4. explain：一句话讲解
+5. needsImage：如果需要看图才能回答（看图列式、数图形、钟表等），设为 true
+6. imageDesc：当 needsImage=true 时，详细描述该题对应的图片内容（物品种类、数量、排列、形状等），要详细到学生不看图也能作答
+
+严格按以下 JSON 数组格式返回，不要任何额外文字，不要 markdown 代码块：
+[{"q":"题目","type":"choice或input","options":["A","B","C","D"],"answer":"答案","hints":["提示1","提示2","提示3"],"explain":"讲解","topic":"知识点","needsImage":false,"imageDesc":""}]`;
+  const body={
+    model:cfg.model,
+    messages:[
+      {role:'system',content:systemPrompt},
+      {role:'user',content:[
+        {type:'text',text:`请仔细识别这张小学${grade}年级作业图片中的所有题目。注意：
+1. 先从上到下、从左到右扫描整张图片，数清楚一共有多少个需要学生填写的空位
+2. 每个独立的填空/选择/计算位置都是一道单独的题目，不要合并
+3. 比如"( )-8=5  14-5=( )-6"是2道题不是1道
+4. 确认无遗漏后，按 JSON 数组格式输出所有题目`},
+        {type:'image_url',image_url:{url:base64}}
+      ]}
+    ],
+    temperature:0.1,
+    max_tokens:16000,
+    stream:true,
+  };
+  let resp;
+  try{
+    resp=await fetch(cfg.url,{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+cfg.key,'Accept':'text/event-stream'},
+      body:JSON.stringify(body),
+    });
+  }catch(netErr){
+    throw new Error('🚫 无法连接到 API。最常见原因是浏览器 CORS 跨域拦截——Kimi/通义/智谱等国产大模型默认不允许网页直接调用。解决：①改用 OpenAI/OpenRouter；②让开发者搭一个简单代理服务器；③用手机热点换网络试试。原始错误：'+netErr.message);
+  }
+  if(!resp.ok){
+    const t=await resp.text();
+    let hint='';
+    if(resp.status===401||resp.status===403)hint=' → API Key 无效/过期，或当前 Key 不支持该模型（如 Kimi-Coding 专用 Key 不能调图像）。';
+    else if(resp.status===400)hint=' → 请求格式问题：请检查模型名是否是"视觉模型"（如 moonshot-v1-8k-vision-preview、qwen-vl-plus、glm-4v-plus、gpt-4o-mini），文本模型不支持图片。';
+    else if(resp.status===429)hint=' → 调用频率超限或余额不足。';
+    throw new Error('API错误 '+resp.status+hint+'\n原始返回: '+t.slice(0,180));
+  }
+  // 环境不支持 ReadableStream：降级到非流式
+  if(!resp.body||!resp.body.getReader){
+    const data=await resp.json();
+    const text=(data.choices&&data.choices[0]&&data.choices[0].message&&data.choices[0].message.content)||'';
+    if(!text)throw new Error('API 返回了空内容。可能是模型不支持视觉输入。');
+    const m=text.match(/\[\s*\{[\s\S]*\}\s*\]/);
+    if(!m)throw new Error('AI返回格式不对，未能解析到题目');
+    let arr;try{arr=JSON.parse(m[0])}catch(e){throw new Error('JSON解析失败：'+e.message)}
+    const out=[];
+    arr.forEach(q=>{const n=normalizeQuestion(q);if(n){out.push(n);if(onQuestion)onQuestion(n,out.length)}});
+    if(!out.length)throw new Error('AI 未识别到题目');
+    return out;
+  }
+  // 流式：边读 SSE 边增量解析 JSON 数组，遇到完整的 {..} 对象就立刻回调
+  const reader=resp.body.getReader();
+  const decoder=new TextDecoder('utf-8');
+  const out=[];
+  let sseBuf='';     // 未读完的 SSE 行
+  let content='';    // 累积的 assistant 文本内容
+  let cur=0;         // 解析游标
+  let started=false; // 是否已进入顶层数组
+  let depth=0;      // 对象嵌套深度
+  let inStr=false;   // 是否在字符串里
+  let esc=false;     // 上一个字符是否是 \
+  let objStart=-1;   // 当前 depth=1 对象的起点
+  while(true){
+    const {done,value}=await reader.read();
+    if(done)break;
+    sseBuf+=decoder.decode(value,{stream:true});
+    let nl;
+    while((nl=sseBuf.indexOf('\n'))>=0){
+      const line=sseBuf.slice(0,nl).trim();
+      sseBuf=sseBuf.slice(nl+1);
+      if(!line||line.startsWith(':'))continue;          // 心跳/注释
+      if(!line.startsWith('data:'))continue;
+      const payload=line.slice(5).trim();
+      if(payload==='[DONE]')continue;
+      let j;try{j=JSON.parse(payload)}catch(_){continue}
+      const delta=j.choices&&j.choices[0]&&j.choices[0].delta&&j.choices[0].delta.content;
+      if(!delta)continue;
+      content+=delta;
+      // 增量扫描新加入的内容
+      while(cur<content.length){
+        const ch=content[cur];
+        if(!started){
+          if(ch==='[')started=true;
+          cur++;continue;
+        }
+        if(inStr){
+          if(esc)esc=false;
+          else if(ch==='\\')esc=true;
+          else if(ch==='"')inStr=false;
+          cur++;continue;
+        }
+        if(ch==='"'){inStr=true;cur++;continue}
+        if(ch==='{'){
+          if(depth===0)objStart=cur;
+          depth++;cur++;continue;
+        }
+        if(ch==='}'){
+          depth--;
+          if(depth===0&&objStart>=0){
+            const objText=content.slice(objStart,cur+1);
+            try{
+              const q=JSON.parse(objText);
+              const n=normalizeQuestion(q);
+              if(n){out.push(n);if(onQuestion)onQuestion(n,out.length)}
+            }catch(_){/* 忽略残缺对象 */}
+            objStart=-1;
+          }
+          cur++;continue;
+        }
+        cur++;
+      }
+    }
+  }
+  if(!out.length)throw new Error('AI 未识别到题目（可能返回为空或格式不对）');
+  return out;
+}
+
+// AI 进度 UI
+function setProgress(steps){
+  const box=$('#ai-progress');box.innerHTML='';
+  steps.forEach(s=>{
+    const d=document.createElement('div');
+    d.className='step '+(s.state||'');
+    const icon=s.state==='done'?'✅':s.state==='doing'?'⏳':s.state==='err'?'❌':'⚪';
+    d.innerHTML=`<span class="s-ic">${icon}</span><div>${s.label}${s.extra?`<div style="font-size:11px;color:var(--c-muted);margin-top:2px">${s.extra}</div>`:''}</div>`;
+    box.appendChild(d);
+  });
+}
+
+let AIQs=null; // AI 识别到的题目
+let AIPhoto=null; // 原始作业图片 base64
+async function handlePhoto(file){
+  $('#ai-view-idle').classList.add('hidden');
+  $('#ai-view-preview').classList.add('hidden');
+  $('#ai-view-work').classList.remove('hidden');
+  const b64=await fileToBase64(file);
+  AIPhoto=b64;
+  $('#pho-img').src=b64;$('#pho-img2').src=b64;
+  const steps=[
+    {label:'📷 图片上传完成',state:'done'},
+    {label:'🤖 AI 正在识别题目...',state:'doing'},
+    {label:'📝 生成游戏关卡',state:''},
+  ];
+  setProgress(steps);
+  try{
+    const grade=loadAICfg().grade||SAVE.grade||1;
+    // 流式：每识别完一题就回调一次，更新进度条 + 预览列表
+    AIQs=[];
+    // 预先打开预览视图，让用户实时看到题目冒出来
+    let previewOpened=false;
+    const qs=await callAIVision(b64,grade,(q,n)=>{
+      AIQs.push(q);
+      steps[1]={label:`🤖 AI 识别中：已出 ${n} 道题`,state:'doing',extra:q.q.slice(0,24)+(q.q.length>24?'…':'')};
+      setProgress(steps);
+      if(!previewOpened){
+        // 第一道题到达就打开预览，之后每来一道题追加一条
+        previewOpened=true;
+        $('#ai-view-work').classList.add('hidden');
+        $('#ai-view-preview').classList.remove('hidden');
+        const list=$('#q-preview-list');list.innerHTML='';
+      }
+      $('#q-count').textContent=n;
+      const list=$('#q-preview-list');
+      const d=document.createElement('div');d.className='q-preview-item';
+      d.innerHTML=`<div class="qq">${n}. ${q.q}</div>
+        ${q.options?`<div style="font-size:12px;color:var(--c-muted);margin-bottom:4px">选项：${q.options.join(' / ')}</div>`:''}
+        <div class="aa">答案：${q.answer}</div>
+        <div style="font-size:11px;color:var(--c-muted);margin-top:4px">${q.topic||''}</div>`;
+      list.appendChild(d);
+      // 自动滚到底，让新题目可见
+      list.scrollTop=list.scrollHeight;
+    });
+    AIQs=qs;
+    steps[1]={label:`🤖 AI 识别完成：${qs.length} 道题`,state:'done'};
+    steps[2]={label:'📝 关卡已生成！',state:'done'};
+    setProgress(steps);
+    $('#q-count').textContent=qs.length;
+  }catch(e){
+    steps[1]={label:'🤖 AI 调用失败',state:'err',extra:e.message};
+    setProgress(steps);
+    toast('识别失败：'+e.message,3500);
+  }
+}
+
+function showQPreview(){
+  $('#ai-view-work').classList.add('hidden');
+  $('#ai-view-preview').classList.remove('hidden');
+  $('#q-count').textContent=AIQs.length;
+  const list=$('#q-preview-list');list.innerHTML='';
+  AIQs.forEach((q,i)=>{
+    const d=document.createElement('div');d.className='q-preview-item';
+    d.innerHTML=`<div class="qq">${i+1}. ${q.q}</div>
+      ${q.options?`<div style="font-size:12px;color:var(--c-muted);margin-bottom:4px">选项：${q.options.join(' / ')}</div>`:''}
+      <div class="aa">答案：${q.answer}</div>
+      <div style="font-size:11px;color:var(--c-muted);margin-top:4px">${q.topic||''}</div>`;
+    list.appendChild(d);
+  });
+}
+
+// 启动 AI 定制关卡战斗
+function startAIBattle(){
+  if(!AIQs||!AIQs.length){toast('没有可用题目');return}
+  B={g:SAVE.grade,subj:'math',lv:1,qs:AIQs.slice(),idx:0,correct:0,wrong:0,usedHelp:false,hintStep:0,fromAI:true,photo:AIPhoto,results:[]};
+  const pb=$('#battle-prog');pb.innerHTML='';
+  for(let i=0;i<B.qs.length;i++){const d=document.createElement('div');d.className='prog-dot'+(i===0?' current':'');pb.appendChild(d)}
+  $('#battle').style.background='linear-gradient(135deg,#2a2e6a,#5a2e8a)';
+  $('#monster-name').textContent='📸 拍照副本 Boss';
+  $('#monster-emoji').textContent='🤖';
+  $('#monster').classList.remove('dying','hit');
+  $('#monster-hp-bar').style.width='100%';
+  $('#monster-hp').classList.remove('low');
+  _combo=0;showCombo();
+  const petFace=PET_STAGES[SAVE.pet.stage||0].face;
+  $('#player-char').textContent=petFace;
+  $('#player-name-battle').textContent=SAVE.name||'小勇者';
+  B.playerHp=3;B.playerMaxHp=3;updatePlayerHp();
+
+  closePages();renderQ();showScreen('battle');
+}
+
+// 示例模式（无需 API）
+const DEMO_QS=[
+  {q:'小明买 3 支铅笔，每支 2 元，一共多少元？',type:'choice',options:['5元','6元','8元','9元'],answer:'6元',
+    hints:['一共 = 单价 × 数量','3 × 2 = 6','6 元。'],explain:'总价=单价×数量。',topic:'应用题'},
+  {q:'下列词语中"开"的读音不同的是？',type:'choice',options:['开始','开心','开花','公开'],answer:'公开',
+    hints:['前三个"开"都在词语开头。','"公开"的"开"在词语末尾，但读音也要注意。','仔细想想，前三个是 kāi，公开是 kāi。其实都一样，但这题选不同写法最自然的。'],
+    explain:'示例题目，帮助你体验"拍照出题"流程。',topic:'拼音'},
+  {q:'"apple" 的中文意思是？',type:'choice',options:['苹果','香蕉','橘子','梨'],answer:'苹果',
+    hints:['a-p-p-l-e。','水果。','苹果。'],explain:'apple=苹果。',topic:'单词'},
+];
+function startDemoFlow(){
+  $('#ai-view-idle').classList.add('hidden');
+  $('#ai-view-work').classList.remove('hidden');
+  $('#pho-img').src='data:image/svg+xml;utf8,'+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 200"><rect fill="%23fff" width="300" height="200"/><text x="150" y="100" font-size="20" text-anchor="middle" fill="%23333">示例作业</text></svg>');
+  $('#pho-img2').src=$('#pho-img').src;
+  const steps=[
+    {label:'📷 使用示例图片',state:'done'},
+    {label:'🤖 模拟 AI 识别中...',state:'doing'},
+    {label:'📝 生成关卡',state:''},
+  ];
+  setProgress(steps);
+  setTimeout(()=>{
+    steps[1]={label:'🤖 模拟识别完成：3 道题',state:'done'};
+    steps[2]={label:'📝 关卡已生成',state:'doing'};
+    setProgress(steps);
+    setTimeout(()=>{
+      AIQs=DEMO_QS.slice();
+      steps[2]={label:'📝 关卡已生成！',state:'done'};
+      setProgress(steps);
+      setTimeout(showQPreview,400);
+    },500);
+  },1200);
+}
+
+function initAI(){
+  $('#fab-ai').onclick=()=>openPage('ai');
+  // 两个独立入口：拍照 / 选文件
+  $('#btn-camera').onclick=()=>$('#photo-input-cam').click();
+  $('#btn-file').onclick=()=>$('#photo-input-file').click();
+  const onFile=e=>{
+    const f=e.target.files&&e.target.files[0];
+    if(!f){return}
+    if(!f.type.startsWith('image/')){toast('请选择图片文件（jpg/png/webp）');e.target.value='';return}
+    if(f.size>10*1024*1024){toast('图片太大啦，请小于 10MB');e.target.value='';return}
+    handlePhoto(f);e.target.value='';
+  };
+  $('#photo-input-cam').onchange=onFile;
+  $('#photo-input-file').onchange=onFile;
+  // 点击虚线框也触发上传
+  $('#drop-zone').onclick=()=>$('#photo-input-file').click();
+  // 拖拽（整个AI页面都接收拖放）
+  const dz=$('#drop-zone'),page=$('#page-ai');
+  ['dragenter','dragover'].forEach(ev=>page.addEventListener(ev,e=>{e.preventDefault();dz.classList.add('active')}));
+  ['dragleave','drop'].forEach(ev=>page.addEventListener(ev,e=>{e.preventDefault();dz.classList.remove('active')}));
+  page.addEventListener('drop',e=>{
+    const f=e.dataTransfer.files&&e.dataTransfer.files[0];
+    if(f&&f.type.startsWith('image/'))handlePhoto(f);
+  });
+  // 粘贴图片（Ctrl+V 截图）
+  document.addEventListener('paste',e=>{
+    if(!$('#page-ai').classList.contains('show'))return;
+    const items=e.clipboardData&&e.clipboardData.items;if(!items)return;
+    for(const it of items){
+      if(it.type&&it.type.startsWith('image/')){
+        const f=it.getAsFile();if(f){handlePhoto(f);toast('📋 已从剪贴板读取图片');break}
+      }
+    }
+  });
+  $('#ai-demo-btn').onclick=startDemoFlow;
+  $('#ai-cancel').onclick=()=>{
+    $('#ai-view-work').classList.add('hidden');
+    $('#ai-view-idle').classList.remove('hidden');
+  };
+  $('#ai-redo').onclick=()=>{
+    $('#ai-view-preview').classList.add('hidden');
+    $('#ai-view-idle').classList.remove('hidden');
+  };
+  $('#ai-battle').onclick=startAIBattle;
+  $('#ai-settings-btn').onclick=()=>{closePages();$('#page-ai-cfg').classList.add('show');renderAICfg()};
+  $('#ai-cfg-back').onclick=()=>{$('#page-ai-cfg').classList.remove('show');openPage('ai')};
+  $('#cfg-save').onclick=()=>{saveCfgFromUI();toast('✅ 已保存到本设备')};
+  $('#cfg-test').onclick=async()=>{
+    const cfg=saveCfgFromUI();
+    if(!cfg.url||!cfg.key||!cfg.model){toast('请先填入完整信息');return}
+    toast('🔌 正在测试...');
+    try{
+      const resp=await fetch(cfg.url,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+cfg.key},
+        body:JSON.stringify({model:cfg.model,messages:[{role:'user',content:'hi'}],max_tokens:10})});
+      if(resp.ok)toast('✅ 连通成功');else{const t=await resp.text();toast('❌ '+resp.status+': '+t.slice(0,80),3000)}
+    }catch(e){toast('❌ '+e.message,3000)}
+  };
+  const ttsTestBtn=$('#cfg-tts-test');
+  if(ttsTestBtn){
+    ttsTestBtn.onclick=()=>{
+      const cfg=saveCfgFromUI();
+      if(!cfg.tts_url){toast('请先填 TTS 服务地址');return}
+      toast('🔊 试听中...');
+      const sample='你好，小朋友！14 减 7 等于 7。';
+      speak(sample);
+    };
+  }
+}
+initAI();
+
+// ------------------ 启动 ------------------
+initStart();bind();updateHUD();
+if(SAVE.stats.battles>0){renderMap();showScreen('map')}
+document.addEventListener('dblclick',e=>e.preventDefault());
+
+})();
+</script>
+</body>
+</html>

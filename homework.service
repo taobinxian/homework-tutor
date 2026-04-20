@@ -1,0 +1,51 @@
+[Unit]
+Description=小学生作业辅导 · AI 代理 + 火山引擎 TTS
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+# 把下面这行改成你想让服务以哪个用户运行（安全起见，不要用 root）
+# 如果还没创建普通用户，可以直接删掉 User= 和 Group= 两行
+User=homework
+Group=homework
+
+# 部署路径（proxy.js 和 index.html 放在这里）
+WorkingDirectory=/opt/homework
+ExecStart=/usr/bin/node /opt/homework/proxy.js
+Restart=on-failure
+RestartSec=3
+
+# 监听配置
+Environment=PORT=8787
+Environment=BIND=0.0.0.0
+
+# AI 上游（OpenRouter / Kimi / 通义千问 兼容 OpenAI 协议的任选一个）
+Environment=UPSTREAM=https://openrouter.ai/api/v1/chat/completions
+
+# 火山引擎 豆包语音合成 2.0 (Seed-TTS 2.0) —— console.volcengine.com → 语音技术 → 语音合成大模型
+#  AppID：应用页顶部（你的是 1599031079）
+#  Token：应用详情底部「服务接口认证信息」里的 Access Token（或新控制台的 Api Key）
+#  注意：走的是 v3 SSE 接口 /api/v3/tts/unidirectional/sse，不再需要 cluster。
+#       resource_id 代码里按 voice 前缀自动路由：saturn_*→volc.megatts.default（复刻 2.0）、
+#       其它→volc.service_type.10029（TTS 2.0）。如需强制某个值，再打开 VOLC_RESOURCE_ID。
+Environment=VOLC_APPID=1599031079
+Environment=VOLC_TOKEN=在这里填你的AccessToken
+#Environment=VOLC_RESOURCE_ID=volc.service_type.10029
+
+# 静态托管目录（放 index.html）
+Environment=STATIC_DIR=/opt/homework
+
+# 日志走 journal
+StandardOutput=journal
+StandardError=journal
+
+# 基础安全加固（按需启用）
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/opt/homework
+
+[Install]
+WantedBy=multi-user.target

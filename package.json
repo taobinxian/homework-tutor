@@ -4,7 +4,8 @@
   "description": "基于 AI + 游戏化的小学作业辅导工具，支持 1-6 年级数学/语文/英语/科学（3年级起）四个学科。",
   "main": "grade1.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "validate:bank": "node scripts/validate-question-bank.js"
   },
   "keywords": [],
   "author": "",

@@ -237,6 +237,23 @@ input{font-family:inherit}
 }
 .region-header h2{font-size:24px;margin:0 0 4px;letter-spacing:3px;text-shadow:0 3px 8px rgba(0,0,0,.5)}
 .region-header p{color:rgba(255,255,255,.85);margin:0;font-size:13px}
+.semester-switcher{
+  display:flex;justify-content:center;gap:10px;flex-wrap:wrap;
+  padding:0 20px 10px;position:relative;z-index:2;
+}
+.semester-chip{
+  border:1px solid rgba(255,255,255,.18);
+  background:rgba(15,21,60,.26);color:#fff;
+  border-radius:999px;padding:8px 14px;
+  font-size:13px;font-weight:700;cursor:pointer;
+  backdrop-filter:blur(6px);transition:.18s;
+}
+.semester-chip.active{
+  background:linear-gradient(135deg,#ffd972,#ffb347);
+  color:#44280f;border-color:rgba(255,255,255,.32);
+  box-shadow:0 10px 18px rgba(255,184,71,.28);
+}
+.semester-chip.ghost{opacity:.78}
 .dungeon-grid{
   flex:1;padding:20px;display:flex;flex-direction:column;gap:14px;
   position:relative;z-index:2;overflow-y:auto;
@@ -1183,6 +1200,7 @@ input{font-family:inherit}
       <h2 id="region-name">森林大陆</h2>
       <p id="region-desc">在这里挑战副本，答对题目就能打败怪兽！</p>
     </div>
+    <div class="semester-switcher" id="region-semesters"></div>
     <div class="dungeon-grid" id="dungeon-grid"></div>
   </div>
 
@@ -1481,6 +1499,7 @@ input{font-family:inherit}
 <div class="toast-wrap" id="toast-wrap"></div>
 
 <script src="/static/questions.js"></script>
+<script src="/static/curriculum.js"></script>
 <script src="/static/grade1.js"></script>
 <script src="/static/grade2.js"></script>
 <script src="/static/grade3.js"></script>
@@ -1493,6 +1512,7 @@ input{font-family:inherit}
  * ============================================================ */
 (function(){
 'use strict';
+if(typeof finalizeQuestionBank==='function') finalizeQuestionBank();
 // ------------------ 基础工具 ------------------
 const $=s=>document.querySelector(s);
 const $$=s=>document.querySelectorAll(s);
@@ -1819,21 +1839,129 @@ const DEFAULT_SAVE={
   clearedLevels:{},achv:{},
   stats:{correct:0,wrong:0,battles:0,levelsCleared:0},
   battleCount:0,unlocked:[1],
+  semesterPrefs:{},
+  migrations:{},
   lastLogin:null,streak:0,
   wrongBook:[], // 错题库：{q,answer,userAnswer,topic,date,source}
 };
 let SAVE=loadSave();
+function migrateSaveState(state){
+  const next=Object.assign(clone(DEFAULT_SAVE),state||{});
+  next.clearedLevels=next.clearedLevels||{};
+  next.semesterPrefs=next.semesterPrefs||{};
+  next.migrations=next.migrations||{};
+  if(!next.migrations.semesterProgressV1){
+    const snapshot={...next.clearedLevels};
+    Object.keys(snapshot).forEach(key=>{
+      const match=key.match(/^(\d+)-(math|chinese|english|science)-([123])$/);
+      if(!match) return;
+      const grade=match[1];
+      const subject=match[2];
+      const level=match[3];
+      ['upper','lower'].forEach(semester=>{
+        const termKey=`${grade}-${subject}-${semester}-${level}`;
+        if(next.clearedLevels[termKey]==null) next.clearedLevels[termKey]=snapshot[key];
+      });
+    });
+    next.migrations.semesterProgressV1=Date.now();
+  }
+  return next;
+}
 function loadSave(){
   try{const raw=localStorage.getItem(SAVE_KEY);if(!raw)return clone(DEFAULT_SAVE);
-    return Object.assign(clone(DEFAULT_SAVE),JSON.parse(raw));}catch(e){return clone(DEFAULT_SAVE)}
+    return migrateSaveState(JSON.parse(raw));}catch(e){return clone(DEFAULT_SAVE)}
 }
 function save(){try{localStorage.setItem(SAVE_KEY,JSON.stringify(SAVE))}catch(e){}}
+const SEMESTER_OPTIONS=[{key:'upper',label:'上册'},{key:'lower',label:'下册'}];
+function semesterLabelOf(semester){
+  return (window.QB_SEMESTER_LABELS&&window.QB_SEMESTER_LABELS[semester])||'未标注';
+}
+function availableSemestersForSubject(grade,subject){
+  if(typeof getAvailableSemesters==='function'){
+    const semesters=getAvailableSemesters(grade,subject);
+    if(semesters.length) return semesters;
+  }
+  return ['upper','lower'];
+}
+function availableSemestersForGrade(grade){
+  return SEMESTER_OPTIONS
+    .map(option=>option.key)
+    .filter(semester=>subjectsForGrade(grade).some(subject=>availableSemestersForSubject(grade,subject.key).includes(semester)));
+}
+function getPreferredSemester(grade){
+  const semesters=availableSemestersForGrade(grade);
+  return semesters.includes(SAVE.semesterPrefs[grade]) ? SAVE.semesterPrefs[grade] : (semesters[0]||'upper');
+}
+function setPreferredSemester(grade,semester){
+  SAVE.semesterPrefs[grade]=semester;
+  save();
+}
+function termProgressKey(grade,subject,semester,level){
+  return `${grade}-${subject}-${semester}-${level}`;
+}
+function legacyProgressKey(grade,subject,level){
+  return `${grade}-${subject}-${level}`;
+}
+function getLevelStars(grade,subject,level,semester){
+  return SAVE.clearedLevels[termProgressKey(grade,subject,semester,level)]
+    || SAVE.clearedLevels[legacyProgressKey(grade,subject,level)]
+    || 0;
+}
+function setLevelStars(grade,subject,level,semester,stars){
+  const key=termProgressKey(grade,subject,semester,level);
+  SAVE.clearedLevels[key]=Math.max(SAVE.clearedLevels[key]||0,stars);
+}
+function isLevelUnlocked(grade,subject,level,semester){
+  return level===1 || getLevelStars(grade,subject,level-1,semester)>0;
+}
+function countTotalLevelsOfGrade(grade){
+  return subjectsForGrade(grade).reduce((sum,subject)=>sum+availableSemestersForSubject(grade,subject.key).length*3,0);
+}
+function isGradeFullyCleared(grade){
+  return subjectsForGrade(grade).every(subject=>
+    availableSemestersForSubject(grade,subject.key).every(semester=>
+      getLevelStars(grade,subject.key,3,semester)>0
+    )
+  );
+}
+function questionMetaText(question,subjectKey,semesterFallback){
+  const subjectName=(SUBJECTS.find(subject=>subject.key===(question.subject||subjectKey))||{}).name || '综合';
+  const semester=question.semester||semesterFallback;
+  const parts=[subjectName];
+  if(semester && semester!=='unknown') parts.push(semesterLabelOf(semester));
+  if(question.topic) parts.push(question.topic);
+  return parts.join(' · ');
+}
+function normalizedBattleThreshold(allPool,level){
+  const tiers=[...new Set((allPool||[]).map(question=>question.lv||1).sort((a,b)=>a-b))];
+  if(!tiers.length) return level;
+  return tiers[Math.min(level-1,tiers.length-1)];
+}
+function getBattlePool(grade,subject,semester,level){
+  const allPool=(typeof getQuestionPool==='function' ? getQuestionPool(grade,subject,semester) : ((QB[grade]||{})[subject]||[])) || [];
+  const threshold=normalizedBattleThreshold(allPool,level);
+  return allPool.filter(question=>(question.lv||1)<=threshold);
+}
+function wrongBookMetaText(question){
+  const parts=[];
+  if(question.subject){
+    const subjectName=(SUBJECTS.find(subject=>subject.key===question.subject)||{}).name;
+    if(subjectName) parts.push(subjectName);
+  }
+  if(question.semester) parts.push(semesterLabelOf(question.semester));
+  if(question.topic) parts.push(question.topic);
+  if(question.source) parts.push(question.source);
+  if(question.date) parts.push((question.date||'').slice(0,10));
+  return parts.join(' · ');
+}
 // 错题库（服务端 SQLite）
 const WB_API='/api/wrongbook';
 function wbUser(){return encodeURIComponent(SAVE.name||'default')}
 function addWrongQuestion(q,userAnswer){
   const body={q:q.q,type:q.type,options:q.options,answer:q.answer,
     hints:q.hints,explain:q.explain,topic:q.topic,
+    grade:B.g,subject:q.subject||B.subj,
+    semester:q.semester||B.semester,knowledgePoints:q.knowledgePoints||[],
     userAnswer:String(userAnswer),source:B.fromAI?'拍照出题':'闯关',
     needsImage:q.needsImage,imageDesc:q.imageDesc};
   fetch(WB_API+'?user='+wbUser(),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}).catch(()=>{});
@@ -1845,7 +1973,7 @@ function startWrongBookBattle(){
   fetch(WB_API+'?user='+wbUser()).then(r=>r.json()).then(wb=>{
     if(!wb.length){toast('错题库是空的，继续闯关吧！');return}
     const picks=shuffle(wb).slice(0,Math.min(5,wb.length));
-    B={g:SAVE.grade,subj:'math',lv:1,qs:picks,idx:0,correct:0,wrong:0,usedHelp:false,hintStep:0,fromWrongBook:true,results:[]};
+    B={g:picks[0].grade||SAVE.grade,subj:picks[0].subject||'math',semester:picks[0].semester||getPreferredSemester(SAVE.grade),lv:1,qs:picks,idx:0,correct:0,wrong:0,usedHelp:false,hintStep:0,fromWrongBook:true,results:[]};
     $('#battle').style.background='linear-gradient(135deg,#5a1a2a,#8a2e4a)';
     $('#monster-name').textContent='📕 错题大Boss';
     $('#monster-emoji').textContent='📕';
@@ -1884,7 +2012,7 @@ function renderWrongBook(){
       d.innerHTML=`<div style="font-size:14px;font-weight:700;margin-bottom:4px">${w.q}</div>
         <div style="font-size:12px;color:#ff6b6b">❌ 你的答案：${w.userAnswer}</div>
         <div style="font-size:12px;color:#6cf0a1">✅ 正确答案：${w.answer}</div>
-        <div style="font-size:11px;color:var(--c-muted);margin-top:4px">${w.topic||''} · ${w.source||''} · ${(w.date||'').slice(0,10)}
+        <div style="font-size:11px;color:var(--c-muted);margin-top:4px">${wrongBookMetaText(w)}
           <span style="cursor:pointer;float:right" onclick="removeWrongQuestion(${w.id})">🗑️</span></div>`;
       list.appendChild(d);
     });
@@ -1943,7 +2071,8 @@ function renderMap(){
   const c=$('#map-canvas');c.innerHTML='';
   CONTINENTS.forEach(ct=>{
     const cleared=countClearedOfGrade(ct.g);
-    const pct=Math.round(cleared/9*100);
+    const total=Math.max(1,countTotalLevelsOfGrade(ct.g));
+    const pct=Math.round(cleared/total*100);
     const locked=!SAVE.unlocked.includes(ct.g);
     const d=document.createElement('div');
     d.className='continent'+(locked?' locked':'');
@@ -1957,32 +2086,71 @@ function renderMap(){
   });
 }
 function subjectsForGrade(g){return SUBJECTS.filter(s=>!s.minGrade||g>=s.minGrade)}
-function countClearedOfGrade(g){let n=0;subjectsForGrade(g).forEach(s=>{for(let lv=1;lv<=3;lv++)if(SAVE.clearedLevels[`${g}-${s.key}-${lv}`])n++});return n}
+function countClearedOfGrade(g){
+  let n=0;
+  subjectsForGrade(g).forEach(subject=>{
+    availableSemestersForSubject(g,subject.key).forEach(semester=>{
+      for(let lv=1;lv<=3;lv++){
+        if(getLevelStars(g,subject.key,lv,semester)>0) n++;
+      }
+    });
+  });
+  return n;
+}
 
 // ------------------ 副本 ------------------
 let curContinent=null;
 function openRegion(ct){
   curContinent=ct;
+  const semester=getPreferredSemester(ct.g);
+  const semesters=availableSemestersForGrade(ct.g);
   $('#region').style.background=ct.theme;
   $('#region-name').textContent=ct.name;
-  $('#region-desc').textContent=`${ct.desc} · 选一门课开始冒险吧`;
+  $('#region-desc').textContent=`${ct.desc} · 当前：${semesterLabelOf(semester)} · 选一门课开始冒险吧`;
+  const semesterBar=$('#region-semesters');
+  semesterBar.innerHTML='';
+  semesters.forEach(key=>{
+    const chip=document.createElement('button');
+    chip.className='semester-chip'+(key===semester?' active':'');
+    chip.textContent=semesterLabelOf(key);
+    chip.onclick=()=>{
+      if(key===semester) return;
+      setPreferredSemester(ct.g,key);
+      openRegion(ct);
+    };
+    semesterBar.appendChild(chip);
+  });
+  if(!semesters.length){
+    const chip=document.createElement('div');
+    chip.className='semester-chip ghost';
+    chip.textContent='教材学期整理中';
+    semesterBar.appendChild(chip);
+  }
   const g=$('#dungeon-grid');g.innerHTML='';
   subjectsForGrade(ct.g).forEach(s=>{
     for(let lv=1;lv<=3;lv++){
-      const key=`${ct.g}-${s.key}-${lv}`;
-      const cleared=SAVE.clearedLevels[key]||0;
-      const locked=lv>1 && !SAVE.clearedLevels[`${ct.g}-${s.key}-${lv-1}`];
+      const levelPool=getBattlePool(ct.g,s.key,semester,lv);
+      const available=levelPool.length>0;
+      const cleared=getLevelStars(ct.g,s.key,lv,semester);
+      const locked=available && !isLevelUnlocked(ct.g,s.key,lv,semester);
+      const desc=!available
+        ? `${s.desc} · ${semesterLabelOf(semester)}暂无题目`
+        : `${s.desc} · ${semesterLabelOf(semester)}${locked?' · 🔒 先通过前一关':''}`;
       const d=document.createElement('div');
-      d.className='dungeon'+(locked?' locked':'');
+      d.className='dungeon'+((locked||!available)?' locked':'');
       d.innerHTML=`<div class="icon ${s.key}">${s.icon}</div>
-        <div class="info"><h3>${s.name}·第${lv}关 ${['入门','进阶','挑战'][lv-1]}</h3>
-          <p>${s.desc}${locked?' · 🔒 先通过前一关':''}</p>
+        <div class="info"><h3>${s.name} · ${semesterLabelOf(semester)} · 第${lv}关 ${['入门','进阶','挑战'][lv-1]}</h3>
+          <p>${desc}</p>
           <div class="star-strip">
             <span class="s ${cleared>=1?'on':''}">⭐</span>
             <span class="s ${cleared>=2?'on':''}">⭐</span>
             <span class="s ${cleared>=3?'on':''}">⭐</span>
           </div></div>`;
-      d.onclick=()=>{if(locked){toast('先完成上一关');return}startBattle(ct.g,s.key,lv)};
+      d.onclick=()=>{
+        if(!available){toast(`${s.name}${semesterLabelOf(semester)}题库整理中`);return}
+        if(locked){toast('先完成上一关');return}
+        startBattle(ct.g,s.key,semester,lv);
+      };
       g.appendChild(d);
     }
   });
@@ -1991,13 +2159,13 @@ function openRegion(ct){
 
 // ------------------ 战斗 ------------------
 let B=null;
-function startBattle(g,subj,lv){
-  const allPool=QB[g][subj]||[];
-  // 按关卡难度筛选：lv1=入门(lv<=1)，lv2=进阶(lv<=2)，lv3=挑战(全部)
-  const pool=allPool.filter(q=>!q.lv||q.lv<=lv);
-  if(!pool.length){toast('这关题库还在路上～');return}
+function startBattle(g,subj,semester,lv){
+  if(typeof semester==='number'){lv=semester;semester=getPreferredSemester(g)}
+  semester=semester||getPreferredSemester(g);
+  const pool=getBattlePool(g,subj,semester,lv);
+  if(!pool.length){toast(`${semesterLabelOf(semester)}这关题库还在整理中～`);return}
   const picks=shuffle(pool).slice(0,Math.min(5,pool.length));
-  B={g,subj,lv,qs:picks,idx:0,correct:0,wrong:0,usedHelp:false,hintStep:0,results:[]};
+  B={g,subj,semester,lv,qs:picks,idx:0,correct:0,wrong:0,usedHelp:false,hintStep:0,results:[]};
   // 初始化进度条小格子
   const pb=$('#battle-prog');pb.innerHTML='';
   for(let i=0;i<picks.length;i++){const d=document.createElement('div');d.className='prog-dot'+(i===0?' current':'');pb.appendChild(d)}
@@ -2025,7 +2193,7 @@ function renderQ(){
   // 蓄力光效
   const pc=$('#player-char');
   if(pc){pc.classList.remove('attacking','hurt');pc.classList.add('charging')}
-  $('#q-topic').textContent=`${SUBJECTS.find(s=>s.key===B.subj).name} · ${q.topic||''}`;
+  $('#q-topic').textContent=questionMetaText(q,B.subj,B.semester);
   $('#q-text').textContent=q.q;
   // 拍照出题：始终显示原始作业照片
   const photoArea=$('#q-photo-area');
@@ -2294,9 +2462,8 @@ function winBattle(){
   SAVE.stats.battles++;SAVE.stats.levelsCleared++;SAVE.battleCount++;
   const total=B.qs.length,acc=B.correct/total;
   const stars=acc===1?3:acc>=0.8?2:1;
-  const key=`${B.g}-${B.subj}-${B.lv}`;
-  SAVE.clearedLevels[key]=Math.max(SAVE.clearedLevels[key]||0,stars);
-  const allCleared=subjectsForGrade(B.g).every(s=>(SAVE.clearedLevels[`${B.g}-${s.key}-3`]||0)>0);
+  setLevelStars(B.g,B.subj,B.lv,B.semester,stars);
+  const allCleared=isGradeFullyCleared(B.g);
   if(allCleared && B.g<6 && !SAVE.unlocked.includes(B.g+1)){
     SAVE.unlocked.push(B.g+1);SAVE.unlocked.sort((a,b)=>a-b);
     toast(`🎊 解锁新大陆：${CONTINENTS[B.g].name}！`);
@@ -2486,10 +2653,10 @@ const ACHV=[
   {id:'ten_correct',n:'小有成就',d:'累计答对10题',ic:'✨',check:s=>s.stats.correct>=10,prog:s=>Math.min(1,s.stats.correct/10)},
   {id:'fifty_correct',n:'博学多才',d:'累计答对50题',ic:'🌟',check:s=>s.stats.correct>=50,prog:s=>Math.min(1,s.stats.correct/50)},
   {id:'hundred_correct',n:'知识达人',d:'累计答对100题',ic:'🏅',check:s=>s.stats.correct>=100,prog:s=>Math.min(1,s.stats.correct/100)},
-  {id:'all_subjects',n:'文武全才',d:'语数英都通关一次',ic:'🎨',check:s=>SUBJECTS.every(sj=>Object.keys(s.clearedLevels).some(k=>k.includes('-'+sj.key+'-')))},
+  {id:'all_subjects',n:'文武全才',d:'语数英都通关一次',ic:'🎨',check:s=>['math','chinese','english'].every(subjectKey=>Object.keys(s.clearedLevels).some(key=>key.includes('-'+subjectKey+'-')))},
   {id:'streak3',n:'持之以恒',d:'连续登录3天',ic:'📅',check:s=>s.streak>=3,prog:s=>Math.min(1,s.streak/3)},
   {id:'pet_lv5',n:'好伙伴',d:'把伙伴养到Lv5',ic:'🐥',check:s=>s.pet.lv>=5,prog:s=>Math.min(1,s.pet.lv/5)},
-  {id:'grade_conq',n:'征服者',d:'通关任意一个大陆',ic:'🏰',check:s=>CONTINENTS.some(c=>SUBJECTS.every(sj=>(s.clearedLevels[`${c.g}-${sj.key}-3`]||0)>0))},
+  {id:'grade_conq',n:'征服者',d:'通关任意一个大陆',ic:'🏰',check:s=>CONTINENTS.some(c=>subjectsForGrade(c.g).every(subject=>availableSemestersForSubject(c.g,subject.key).every(semester=>(s.clearedLevels[termProgressKey(c.g,subject.key,semester,3)]||0)>0)))},
 ];
 function checkAchievements(){
   ACHV.forEach(a=>{
@@ -2539,9 +2706,18 @@ function showParentReport(){
   const subjStats={};
   SUBJECTS.forEach(s=>{
     subjStats[s.key]={cleared:0,stars:0};
-    for(let g=1;g<=6;g++) for(let lv=1;lv<=3;lv++){
-      const k=`${g}-${s.key}-${lv}`;
-      if(SAVE.clearedLevels[k]){subjStats[s.key].cleared++;subjStats[s.key].stars+=SAVE.clearedLevels[k]}
+    for(let g=1;g<=6;g++){
+      availableSemestersForSubject(g,s.key).forEach(semester=>{
+        const pool=(typeof getQuestionPool==='function' ? getQuestionPool(g,s.key,semester) : ((QB[g]||{})[s.key]||[])) || [];
+        if(!pool.length) return;
+        for(let lv=1;lv<=3;lv++){
+          const stars=getLevelStars(g,s.key,lv,semester);
+          if(stars){
+            subjStats[s.key].cleared++;
+            subjStats[s.key].stars+=stars;
+          }
+        }
+      });
     }
   });
   const sciLine=subjStats.science?`<tr><td>🔬 科学</td><td>${subjStats.science.cleared} 关</td><td>${subjStats.science.stars} ⭐</td></tr>`:'';
@@ -2629,11 +2805,11 @@ function bind(){
   $('#v-back').onclick=()=>{$('#victory').classList.remove('show');closePages();openRegion(curContinent)};
   $('#v-next').onclick=()=>{
     $('#victory').classList.remove('show');
-    if(B.lv<3)startBattle(B.g,B.subj,B.lv+1);
+    if(B.lv<3)startBattle(B.g,B.subj,B.semester,B.lv+1);
     else openRegion(curContinent);
   };
   $('#d-back').onclick=()=>{$('#defeat').classList.remove('show');closePages();openRegion(curContinent)};
-  $('#d-retry').onclick=()=>{$('#defeat').classList.remove('show');startBattle(B.g,B.subj,B.lv)};
+  $('#d-retry').onclick=()=>{$('#defeat').classList.remove('show');startBattle(B.g,B.subj,B.semester,B.lv)};
   $('#ai-modal').onclick=e=>{if(e.target.id==='ai-modal')closeAI()};
 }
 
@@ -2948,7 +3124,7 @@ function showQPreview(){
 // 启动 AI 定制关卡战斗
 function startAIBattle(){
   if(!AIQs||!AIQs.length){toast('没有可用题目');return}
-  B={g:SAVE.grade,subj:'math',lv:1,qs:AIQs.slice(),idx:0,correct:0,wrong:0,usedHelp:false,hintStep:0,fromAI:true,photo:AIPhoto,results:[]};
+  B={g:SAVE.grade,subj:'math',semester:getPreferredSemester(SAVE.grade),lv:1,qs:AIQs.slice(),idx:0,correct:0,wrong:0,usedHelp:false,hintStep:0,fromAI:true,photo:AIPhoto,results:[]};
   const pb=$('#battle-prog');pb.innerHTML='';
   for(let i=0;i<B.qs.length;i++){const d=document.createElement('div');d.className='prog-dot'+(i===0?' current':'');pb.appendChild(d)}
   $('#battle').style.background='linear-gradient(135deg,#2a2e6a,#5a2e8a)';

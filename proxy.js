@@ -56,6 +56,17 @@ try {
     image_desc TEXT,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
   )`);
+  const existingColumns=db.prepare('PRAGMA table_info(wrong_questions)').all().map(column=>column.name);
+  const ensureColumn=(name,definition)=>{
+    if(!existingColumns.includes(name)){
+      db.exec(`ALTER TABLE wrong_questions ADD COLUMN ${name} ${definition}`);
+      existingColumns.push(name);
+    }
+  };
+  ensureColumn('grade','INTEGER');
+  ensureColumn('subject','TEXT');
+  ensureColumn('semester','TEXT');
+  ensureColumn('knowledge_points','TEXT');
   db.exec(`CREATE INDEX IF NOT EXISTS idx_wrong_user ON wrong_questions(user)`);
   console.log('  错题库: ✅ SQLite 已就绪 · ' + dbPath);
 } catch(e) {
@@ -96,6 +107,12 @@ const MIME = {
   '.webp':'image/webp', '.txt':'text/plain; charset=utf-8',
   '.woff':'font/woff','.woff2':'font/woff2',
 };
+
+function safeJSONParse(text,fallback){
+  if(!text) return fallback;
+  try{return JSON.parse(text);}
+  catch(_){return fallback;}
+}
 
 function uuid(){
   return 'xxxxxxxxxxxx4xxxyxxxxxxxxxxxxxxx'.replace(/[xy]/g,c=>{
@@ -381,9 +398,11 @@ const server = http.createServer((req,res)=>{
     const user=u.searchParams.get('user')||'default';
     if(req.method==='GET' && pathname==='/api/wrongbook'){
       const rows=db.prepare('SELECT * FROM wrong_questions WHERE user=? ORDER BY created_at DESC').all(user);
-      const out=rows.map(r=>({id:r.id,q:r.q,type:r.type,options:r.options?JSON.parse(r.options):null,
-        answer:r.answer,userAnswer:r.user_answer,hints:r.hints?JSON.parse(r.hints):null,
-        explain:r.explain_text,topic:r.topic,source:r.source,date:r.created_at,
+      const out=rows.map(r=>({id:r.id,q:r.q,type:r.type,options:safeJSONParse(r.options,null),
+        answer:r.answer,userAnswer:r.user_answer,hints:safeJSONParse(r.hints,null),
+        explain:r.explain_text,topic:r.topic,grade:r.grade||null,subject:r.subject||'',
+        semester:r.semester||'',knowledgePoints:safeJSONParse(r.knowledge_points,[]),
+        source:r.source,date:r.created_at,
         needsImage:!!r.needs_image,imageDesc:r.image_desc}));
       res.writeHead(200,{...CORS,'Content-Type':'application/json; charset=utf-8'});
       return res.end(JSON.stringify(out));
@@ -393,9 +412,25 @@ const server = http.createServer((req,res)=>{
         const j=JSON.parse(buf.toString('utf-8'));
         const existing=db.prepare('SELECT id FROM wrong_questions WHERE user=? AND q=?').get(user,j.q);
         if(existing){res.writeHead(200,{...CORS,'Content-Type':'application/json'});return res.end('{"ok":true,"msg":"already exists"}')}
-        db.prepare(`INSERT INTO wrong_questions(user,q,type,options,answer,user_answer,hints,explain_text,topic,source,needs_image,image_desc)
-          VALUES(?,?,?,?,?,?,?,?,?,?,?,?)`).run(user,j.q,j.type,j.options?JSON.stringify(j.options):null,
-          j.answer,j.userAnswer,j.hints?JSON.stringify(j.hints):null,j.explain||'',j.topic||'',j.source||'',j.needsImage?1:0,j.imageDesc||'');
+        db.prepare(`INSERT INTO wrong_questions(user,q,type,options,answer,user_answer,hints,explain_text,topic,grade,subject,semester,knowledge_points,source,needs_image,image_desc)
+          VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(
+            user,
+            j.q,
+            j.type,
+            j.options?JSON.stringify(j.options):null,
+            j.answer,
+            j.userAnswer,
+            j.hints?JSON.stringify(j.hints):null,
+            j.explain||'',
+            j.topic||'',
+            j.grade||null,
+            j.subject||'',
+            j.semester||'',
+            Array.isArray(j.knowledgePoints)?JSON.stringify(j.knowledgePoints):'[]',
+            j.source||'',
+            j.needsImage?1:0,
+            j.imageDesc||''
+          );
         res.writeHead(200,{...CORS,'Content-Type':'application/json'});res.end('{"ok":true}');
       }).catch(e=>{res.writeHead(400,{...CORS,'Content-Type':'application/json'});res.end(JSON.stringify({error:e.message}))});
     }

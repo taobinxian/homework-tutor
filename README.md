@@ -19,7 +19,9 @@
 ├── index.html          # 主页面（HTML + CSS + JS 单文件应用）
 ├── proxy.js            # Node.js 代理服务（AI 转发 + TTS + 错题库 API + 静态托管）
 ├── questions.js        # 题库初始化 + 工具函数
+├── curriculum.js       # 人教版学期与知识点映射表
 ├── grade1.js ~ grade6.js  # 各年级题库（人教版）
+├── scripts/validate-question-bank.js  # 题库学期/知识点校验脚本
 ├── homework.service    # systemd 服务配置
 ├── deploy.sh           # 一键部署脚本
 └── DEPLOY.md           # 火山引擎 TTS 配置详细说明
@@ -32,6 +34,37 @@
 - **服务器**：Linux（Ubuntu/Debian 推荐），有 Node.js 18+
 - **本机**：macOS/Linux/Windows，有 SSH 客户端
 - **网络**：服务器和客户端在同一局域网
+
+### 0. 本机 macOS 启动（开发/自用）
+
+如果你是在这台 Mac 上直接运行，而不是部署到远程 Linux 服务器，最简单有两种方式：
+
+```bash
+# 方式一：当前终端前台启动
+cd /Users/taobinxian/homework-tutor
+node proxy.js
+
+# 浏览器访问
+http://localhost:8787/app
+```
+
+如果希望 `8787` 端口常驻，可用仓库里的 LaunchAgent 模板：
+
+```bash
+cp launchagents/com.taobinxian.homework-tutor-8787.plist ~/Library/LaunchAgents/
+launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.taobinxian.homework-tutor-8787.plist
+launchctl kickstart -k gui/$(id -u)/com.taobinxian.homework-tutor-8787
+
+# 查看状态/日志
+launchctl print gui/$(id -u)/com.taobinxian.homework-tutor-8787
+tail -f /tmp/homework-tutor-8787.log
+```
+
+说明：
+
+- 模板里的 `ProgramArguments` 默认写的是 Apple Silicon 常见 Node 路径 `/opt/homebrew/bin/node`，如果你的 `which node` 不一样，需要先改 plist。
+- 模板里的 `WorkingDirectory` 和 `STATIC_DIR` 都要改成你的实际项目路径。
+- 在本机浏览器访问时，直接用 `http://localhost:8787/app` 就可以。
 
 ### 1. 首次安装
 
@@ -106,7 +139,7 @@ sudo systemctl restart homework
 
 ```bash
 # 上传文件
-scp index.html proxy.js questions.js grade*.js <用户名>@<IP>:/tmp/homework-deploy/
+scp index.html proxy.js questions.js curriculum.js grade*.js <用户名>@<IP>:/tmp/homework-deploy/
 
 # 远程执行
 ssh <用户名>@<IP>
@@ -169,11 +202,13 @@ sudo journalctl -u homework -f
 
 ## 题库说明
 
-题库按人教版教材编排，存放在 `grade1.js` ~ `grade6.js` 中：
+题库按人教版教材编排，存放在 `grade1.js` ~ `grade6.js` 中，教材映射规则集中维护在 `curriculum.js`：
 
 - 每年级包含数学、语文、英语三科（3年级起增加科学）
 - 每题带 `lv` 字段标记难度：`1`=入门、`2`=进阶、`3`=挑战
+- 页面加载时会自动补齐 `semester`、`semesterLabel`、`knowledgePoints`
 - 关卡按难度筛选题目：入门关只出 lv1，进阶关出 lv1+2，挑战关出全部
+- 闯关会按“学科 + 学期 + 难度”取题，错题库也会保存学期和知识点
 - 计算类题目通过循环随机生成，每次刷新不重复
 
 添加新题格式：
@@ -186,8 +221,22 @@ QB[年级].math.push({
   hints: ['提示1','提示2','提示3'],
   explain: '一句话讲解',
   topic: '知识点名称',
+  semester: 'upper',        // 可选：上册/下册，通常由 curriculum.js 自动补齐
+  knowledgePoints: ['知识点名称'], // 可选：通常由 curriculum.js 自动补齐
   lv: 1                     // 1=入门 2=进阶 3=挑战
 });
+```
+
+推荐维护方式：
+
+- 优先在 `curriculum.js` 里维护 `年级 + 学科 + topic -> semester + knowledgePoints` 映射。
+- 只有少量模糊题目才通过 `QB_CURRICULUM_OVERRIDES` 做题目级覆写。
+- 改完题库后运行 `npm run validate:bank`，检查各年级/学科/学期分布和未映射题目。
+
+校验命令：
+
+```bash
+npm run validate:bank
 ```
 
 ## 常见问题
@@ -202,4 +251,4 @@ QB[年级].math.push({
 确认已安装 `better-sqlite3`（`cd /opt/homework && sudo npm install better-sqlite3`）。
 
 **Q: 手机上显示不正常？**
-确保使用 `http://<IP>:8787/app` 访问（不要用 localhost），清除浏览器缓存后重试。
+如果是手机或同局域网其他设备访问，请使用 `http://<IP>:8787/app`，不要用 `localhost`；如果是本机浏览器访问，`http://localhost:8787/app` 是可以的。

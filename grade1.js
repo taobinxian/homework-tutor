@@ -238,3 +238,153 @@ QB[1].chinese.push(
   {q:'"妈妈洗了衣服"改把字句？',type:'choice',options:shuffle(['妈妈把衣服洗了','衣服把妈妈洗了','衣服被洗了妈妈','洗了把妈妈衣服']),answer:'妈妈把衣服洗了',hints:['谁把什么怎么了','妈妈把衣服','妈妈把衣服洗了'],explain:'把字句',topic:'句子',lv:3},
   {q:'"他跑得很快"中"得"用法对吗？',type:'choice',options:shuffle(['对','错应该用的','错应该用地','不确定']),answer:'对',hints:['得后面补充说明','跑得快','对'],explain:'得+补充说明程度',topic:'句子',lv:3}
 );
+
+// =============== 补充题目 — 人教版知识点覆盖 ===============
+
+// -------- 数学：位置 --------
+QB[1].math.push(
+  {q:'小鸟飞在树的哪个方向？',type:'choice',options:shuffle(['上面','下面','左边','右边']),answer:'上面',hints:['鸟在天上飞','树的上方','上面'],explain:'鸟飞在树的上面',topic:'位置',lv:1},
+  {q:'排队时你前面有3人后面有2人一共几人？',type:'input',answer:'6',hints:['前3+自己+后2','3+1+2','6人'],explain:'总人数=前面+自己+后面',topic:'位置',lv:1},
+  {q:'小明坐在小红的左边那小红坐在小明的哪边？',type:'choice',options:shuffle(['左边','右边','前面','后面']),answer:'右边',hints:['位置是相对的','左右相反','右边'],explain:'左右是相对的',topic:'位置',lv:1},
+  {q:'面朝前方你的右手在哪边？',type:'choice',options:shuffle(['左边','右边','前面','后面']),answer:'右边',hints:['写字的手','右边','右边'],explain:'大多数人右手在右边',topic:'位置',lv:1},
+  {q:'教室里黑板在同学们的哪个方向？',type:'choice',options:shuffle(['前面','后面','左边','右边']),answer:'前面',hints:['上课看黑板','面对黑板','前面'],explain:'黑板在同学们的前面',topic:'位置',lv:1}
+);
+
+// -------- 数学：连加连减 --------
+QB[1].math.push(
+  {q:'2 + 3 + 4 = ?',type:'input',answer:'9',hints:['先算2+3=5','再算5+4','9'],explain:'连加从左到右算',topic:'连加连减',lv:2},
+  {q:'10 - 3 - 2 = ?',type:'input',answer:'5',hints:['先算10-3=7','再算7-2','5'],explain:'连减从左到右算',topic:'连加连减',lv:2},
+  {q:'8 - 3 + 4 = ?',type:'input',answer:'9',hints:['先算8-3=5','再算5+4','9'],explain:'加减混合从左到右',topic:'连加连减',lv:2},
+  {q:'5 + 2 - 3 = ?',type:'input',answer:'4',hints:['先算5+2=7','再算7-3','4'],explain:'加减混合从左到右',topic:'连加连减',lv:2},
+  {q:'1 + 2 + 3 + 4 = ?',type:'input',answer:'10',hints:['先算1+2=3','3+3=6再6+4','10'],explain:'连加从左到右依次算',topic:'连加连减',lv:2}
+);
+for(let i=0;i<6;i++){const a=rand(1,8),b=rand(1,9-a),c=rand(1,9-a-b);const s=a+b+c;
+  QB[1].math.push({q:a+' + '+b+' + '+c+' = ?',type:'input',answer:String(s),hints:['先算'+a+'+'+b+'='+(a+b),'再加'+c,(a+b)+'+'+c+'='+s],explain:'连加从左到右',topic:'连加连减',lv:2});}
+for(let i=0;i<6;i++){const a=rand(10,18),b=rand(1,a-2),c=rand(1,a-b-1);const s=a-b-c;
+  QB[1].math.push({q:a+' - '+b+' - '+c+' = ?',type:'input',answer:String(s),hints:['先算'+a+'-'+b+'='+(a-b),'再减'+c,(a-b)+'-'+c+'='+s],explain:'连减从左到右',topic:'连加连减',lv:2});}
+
+// -------- 数学：平面图形 --------
+QB[1].math.push(
+  {q:'三角形有几条边？',type:'choice',options:shuffle(['2条','3条','4条','5条']),answer:'3条',hints:['三角＝三条边','数一数','3条'],explain:'三角形有3条边和3个角',topic:'平面图形',lv:2},
+  {q:'正方形有几条边？',type:'choice',options:shuffle(['3条','4条','5条','6条']),answer:'4条',hints:['正方形四四方方','4条边','4条'],explain:'正方形有4条相等的边',topic:'平面图形',lv:2},
+  {q:'圆有几个角？',type:'choice',options:shuffle(['0个','1个','2个','4个']),answer:'0个',hints:['圆是弯的','没有角','0个'],explain:'圆没有角',topic:'平面图形',lv:2},
+  {q:'黑板的面是什么形状？',type:'choice',options:shuffle(['正方形','长方形','三角形','圆']),answer:'长方形',hints:['两条长边两条短边','四边形','长方形'],explain:'黑板面是长方形',topic:'平面图形',lv:2},
+  {q:'车轮的形状是什么？',type:'choice',options:shuffle(['正方形','长方形','三角形','圆']),answer:'圆',hints:['圆圆的能滚动','车轮','圆'],explain:'车轮是圆形的',topic:'平面图形',lv:2}
+);
+
+// -------- 数学：分类与整理 --------
+QB[1].math.push(
+  {q:'苹果香蕉西瓜黄瓜哪个不是水果？',type:'choice',options:shuffle(['苹果','香蕉','西瓜','黄瓜']),answer:'黄瓜',hints:['黄瓜是蔬菜','不是水果','黄瓜'],explain:'按水果和蔬菜分类黄瓜是蔬菜',topic:'分类与整理',lv:1},
+  {q:'红球5个蓝球3个黄球4个一共几个球？',type:'input',answer:'12',hints:['5+3+4','分类再合计','12个'],explain:'分类计数再求总数',topic:'分类与整理',lv:1},
+  {q:'圆形3个三角形5个正方形2个哪种最多？',type:'choice',options:shuffle(['圆形','三角形','正方形','一样多']),answer:'三角形',hints:['比较3、5、2','5最大','三角形'],explain:'三角形5个最多',topic:'分类与整理',lv:1},
+  {q:'铅笔、尺子、橡皮、苹果哪个不是文具？',type:'choice',options:shuffle(['铅笔','尺子','橡皮','苹果']),answer:'苹果',hints:['苹果是水果','不是文具','苹果'],explain:'苹果是水果不是文具',topic:'分类与整理',lv:1}
+);
+
+// -------- 数学：0的认识 --------
+QB[1].math.push(
+  {q:'5 - 5 = ?',type:'input',answer:'0',hints:['全部拿走','一个不剩','0'],explain:'相同数相减等于0',topic:'0的认识',lv:1},
+  {q:'0 + 7 = ?',type:'input',answer:'7',hints:['0加任何数','还是那个数','7'],explain:'0加任何数等于那个数',topic:'0的认识',lv:1},
+  {q:'0比1大还是小？',type:'choice',options:shuffle(['大','小','一样大','不能比']),answer:'小',hints:['0比1小','0<1','小'],explain:'0是最小的自然数',topic:'0的认识',lv:1},
+  {q:'3 - 0 = ?',type:'input',answer:'3',hints:['没拿走任何','还是3','3'],explain:'任何数减0等于它自己',topic:'0的认识',lv:1},
+  {q:'0 + 0 = ?',type:'input',answer:'0',hints:['两个0相加','还是0','0'],explain:'0加0等于0',topic:'0的认识',lv:1}
+);
+
+// -------- 数学：整十数加减 --------
+for(let i=0;i<6;i++){const a=rand(1,8)*10,b=rand(1,Math.floor((100-a)/10))*10;const s=a+b;
+  QB[1].math.push({q:a+' + '+b+' = ?',type:'input',answer:String(s),hints:['整十数相加',a/10+'个十+'+b/10+'个十='+s/10+'个十',String(s)],explain:'整十数加法数十位即可',topic:'整十数加减',lv:3});}
+for(let i=0;i<6;i++){const a=rand(3,9)*10,b=rand(1,Math.floor(a/10)-1)*10;const s=a-b;
+  QB[1].math.push({q:a+' - '+b+' = ?',type:'input',answer:String(s),hints:['整十数相减',a/10+'个十-'+b/10+'个十='+s/10+'个十',String(s)],explain:'整十数减法数十位即可',topic:'整十数加减',lv:3});}
+
+// -------- 语文：多音字 --------
+QB[1].chinese.push(
+  {q:'"长"在"长大"中读什么？',type:'choice',options:shuffle(['cháng','zhǎng','chǎng','zháng']),answer:'zhǎng',hints:['长大=成长','三声','zhǎng'],explain:'长大的长读zhǎng',topic:'多音字',lv:2},
+  {q:'"长"在"很长"中读什么？',type:'choice',options:shuffle(['cháng','zhǎng','chǎng','zháng']),answer:'cháng',hints:['很长=长短的长','二声','cháng'],explain:'长短的长读cháng',topic:'多音字',lv:2},
+  {q:'"乐"在"快乐"中读什么？',type:'choice',options:shuffle(['lè','yuè','lào','yào']),answer:'lè',hints:['快乐=高兴','四声','lè'],explain:'快乐的乐读lè',topic:'多音字',lv:2},
+  {q:'"乐"在"音乐"中读什么？',type:'choice',options:shuffle(['lè','yuè','lào','yào']),answer:'yuè',hints:['音乐=歌曲','四声','yuè'],explain:'音乐的乐读yuè',topic:'多音字',lv:2},
+  {q:'"地"在"土地"中读什么？',type:'choice',options:shuffle(['dì','de','dī','dǐ']),answer:'dì',hints:['土地=大地','四声','dì'],explain:'名词读dì助词读de',topic:'多音字',lv:2}
+);
+
+// -------- 语文：形近字 --------
+QB[1].chinese.push(
+  {q:'"木"和"目"哪个表示眼睛？',type:'choice',options:shuffle(['木','目','林','日']),answer:'目',hints:['目=眼睛','木=树木','目'],explain:'目表示眼睛木表示树木',topic:'形近字',lv:2},
+  {q:'选正确的字填空："人（ ）口"',type:'choice',options:shuffle(['入','人','八','大']),answer:'入',hints:['入口=进去的地方','入','入'],explain:'入口的入不是人',topic:'形近字',lv:2},
+  {q:'"请（ ）下"选正确的字：',type:'choice',options:shuffle(['座','坐','做','作']),answer:'坐',hints:['坐是动作','坐下来','坐'],explain:'坐是动词座是名词',topic:'形近字',lv:2},
+  {q:'"太（ ）了"选正确的字：',type:'choice',options:shuffle(['大','太','犬','天']),answer:'大',hints:['太大了','大=尺寸大','大'],explain:'大表示尺寸太是程度副词',topic:'形近字',lv:2}
+);
+
+// -------- 语文：古诗补充 --------
+QB[1].chinese.push(
+  {q:'"小娃撑小艇"下一句？',type:'choice',options:shuffle(['偷采白莲回','白毛浮绿水','疑是地上霜','处处闻啼鸟']),answer:'偷采白莲回',hints:['白居易《池上》','小孩偷莲','偷采白莲回'],explain:'白居易《池上》',topic:'古诗',lv:2},
+  {q:'"泉眼无声惜细流"下一句？',type:'choice',options:shuffle(['树阴照水爱晴柔','小荷才露尖尖角','早有蜻蜓立上头','偷采白莲回']),answer:'树阴照水爱晴柔',hints:['杨万里《小池》','泉水树阴','树阴照水爱晴柔'],explain:'杨万里《小池》',topic:'古诗',lv:2},
+  {q:'"小荷才露尖尖角"下一句？',type:'choice',options:shuffle(['早有蜻蜓立上头','树阴照水爱晴柔','偷采白莲回','处处闻啼鸟']),answer:'早有蜻蜓立上头',hints:['《小池》名句','荷叶蜻蜓','早有蜻蜓立上头'],explain:'杨万里《小池》',topic:'古诗',lv:2},
+  {q:'"松下问童子"下一句？',type:'choice',options:shuffle(['言师采药去','只在此山中','云深不知处','低头思故乡']),answer:'言师采药去',hints:['贾岛《寻隐者不遇》','问小孩','言师采药去'],explain:'贾岛《寻隐者不遇》',topic:'古诗',lv:2},
+  {q:'"李白乘舟将欲行"下一句？',type:'choice',options:shuffle(['忽闻岸上踏歌声','疑是地上霜','低头思故乡','处处闻啼鸟']),answer:'忽闻岸上踏歌声',hints:['李白《赠汪伦》','坐船要走','忽闻岸上踏歌声'],explain:'李白《赠汪伦》',topic:'古诗',lv:2},
+  {q:'"桃花潭水深千尺"下一句？',type:'choice',options:shuffle(['不及汪伦送我情','忽闻岸上踏歌声','春风吹又生','花落知多少']),answer:'不及汪伦送我情',hints:['《赠汪伦》','友情深厚','不及汪伦送我情'],explain:'李白《赠汪伦》',topic:'古诗',lv:2}
+);
+
+// -------- 语文：组词 --------
+QB[1].chinese.push(
+  {q:'"花"能组成哪个词？',type:'choice',options:shuffle(['花朵','花鱼','花走','花跑']),answer:'花朵',hints:['花和朵搭配','花朵','花朵'],explain:'花朵是正确组词',topic:'组词',lv:1},
+  {q:'"明"能组成哪个词？',type:'choice',options:shuffle(['明天','明走','明跑','明飞']),answer:'明天',hints:['日+月=明','明天','明天'],explain:'明天是正确组词',topic:'组词',lv:1},
+  {q:'"下"能组成哪个词？',type:'choice',options:shuffle(['下雨','下鱼','下花','下树']),answer:'下雨',hints:['天上下雨','下雨','下雨'],explain:'下雨是正确组词',topic:'组词',lv:1},
+  {q:'"大"能组成哪个词？',type:'choice',options:shuffle(['大人','大走','大飞','大跳']),answer:'大人',hints:['大和人搭配','大人','大人'],explain:'大人是正确组词',topic:'组词',lv:1}
+);
+
+// -------- 语文：标点符号 --------
+QB[1].chinese.push(
+  {q:'"你叫什么名字"后面用什么标点？',type:'choice',options:shuffle(['。','？','！','，']),answer:'？',hints:['在问别人','疑问句','？'],explain:'疑问句用问号',topic:'标点符号',lv:3},
+  {q:'"今天天气真好啊"后面用什么标点？',type:'choice',options:shuffle(['。','？','！','，']),answer:'！',hints:['表示感叹','真好啊','！'],explain:'感叹句用感叹号',topic:'标点符号',lv:3},
+  {q:'"小明去上学了"后面用什么标点？',type:'choice',options:shuffle(['。','？','！','，']),answer:'。',hints:['陈述一件事','普通句子','。'],explain:'陈述句用句号',topic:'标点符号',lv:3},
+  {q:'"你吃饭了吗"后面用什么标点？',type:'choice',options:shuffle(['。','？','！','，']),answer:'？',hints:['在问别人','疑问句','？'],explain:'疑问句用问号',topic:'标点符号',lv:3}
+);
+
+// -------- 语文：笔顺规则 --------
+QB[1].chinese.push(
+  {q:'"十"字先写哪一笔？',type:'choice',options:shuffle(['横','竖','撇','捺']),answer:'横',hints:['先横后竖','横在前面','横'],explain:'笔顺规则：先横后竖',topic:'笔顺',lv:1},
+  {q:'"八"字先写哪一笔？',type:'choice',options:shuffle(['撇','捺','横','竖']),answer:'撇',hints:['先撇后捺','撇在前面','撇'],explain:'笔顺规则：先撇后捺',topic:'笔顺',lv:1},
+  {q:'"国"字的书写规则是？',type:'choice',options:shuffle(['先外后里再封口','先里后外','从左到右','从上到下']),answer:'先外后里再封口',hints:['全包围结构','先写框','先外后里再封口'],explain:'全包围字先外后里再封口',topic:'笔顺',lv:1},
+  {q:'"问"字先写哪部分？',type:'choice',options:shuffle(['门','口','先写口','先写点']),answer:'门',hints:['半包围结构','先外后里','门'],explain:'半包围结构先写外面',topic:'笔顺',lv:1}
+);
+
+// -------- 英语：学习用品 --------
+QB[1].english.push(
+  {q:'pencil 是什么？',type:'choice',options:shuffle(['铅笔','钢笔','尺子','橡皮']),answer:'铅笔',hints:['p-e-n-c-i-l','写字用的','铅笔'],explain:'pencil = 铅笔',topic:'学习用品',lv:2},
+  {q:'ruler 是什么？',type:'choice',options:shuffle(['铅笔','尺子','橡皮','书包']),answer:'尺子',hints:['r-u-l-e-r','画直线用的','尺子'],explain:'ruler = 尺子',topic:'学习用品',lv:2},
+  {q:'eraser 是什么？',type:'choice',options:shuffle(['铅笔','尺子','橡皮','书']),answer:'橡皮',hints:['e-r-a-s-e-r','擦掉写错的','橡皮'],explain:'eraser = 橡皮',topic:'学习用品',lv:2},
+  {q:'"书包"用英语怎么说？',type:'choice',options:shuffle(['bag','book','pen','desk']),answer:'bag',hints:['b-a-g','装书的','bag'],explain:'bag = 书包',topic:'学习用品',lv:2},
+  {q:'book 是什么？',type:'choice',options:shuffle(['书','本子','笔','桌子']),answer:'书',hints:['b-o-o-k','看的读的','书'],explain:'book = 书',topic:'学习用品',lv:2}
+);
+
+// -------- 英语：食物饮料 --------
+QB[1].english.push(
+  {q:'milk 是什么？',type:'choice',options:shuffle(['牛奶','果汁','水','茶']),answer:'牛奶',hints:['m-i-l-k','白白的','牛奶'],explain:'milk = 牛奶',topic:'食物饮料',lv:2},
+  {q:'cake 是什么？',type:'choice',options:shuffle(['蛋糕','面包','饼干','糖果']),answer:'蛋糕',hints:['c-a-k-e','过生日吃的','蛋糕'],explain:'cake = 蛋糕',topic:'食物饮料',lv:2},
+  {q:'bread 是什么？',type:'choice',options:shuffle(['蛋糕','面包','米饭','面条']),answer:'面包',hints:['b-r-e-a-d','早餐常吃','面包'],explain:'bread = 面包',topic:'食物饮料',lv:2},
+  {q:'egg 是什么？',type:'choice',options:shuffle(['鸡蛋','鸡肉','鱼肉','牛肉']),answer:'鸡蛋',hints:['e-g-g','母鸡下的','鸡蛋'],explain:'egg = 鸡蛋',topic:'食物饮料',lv:2},
+  {q:'water 是什么？',type:'choice',options:shuffle(['水','牛奶','果汁','茶']),answer:'水',hints:['w-a-t-e-r','每天都要喝','水'],explain:'water = 水',topic:'食物饮料',lv:2}
+);
+
+// -------- 英语：玩具 --------
+QB[1].english.push(
+  {q:'ball 是什么？',type:'choice',options:shuffle(['球','娃娃','风筝','车']),answer:'球',hints:['b-a-l-l','圆圆的可以踢','球'],explain:'ball = 球',topic:'玩具',lv:2},
+  {q:'kite 是什么？',type:'choice',options:shuffle(['球','风筝','娃娃','飞机']),answer:'风筝',hints:['k-i-t-e','在天上飞','风筝'],explain:'kite = 风筝',topic:'玩具',lv:2},
+  {q:'doll 是什么？',type:'choice',options:shuffle(['娃娃','球','车','风筝']),answer:'娃娃',hints:['d-o-l-l','抱着玩的','娃娃'],explain:'doll = 娃娃',topic:'玩具',lv:2},
+  {q:'"玩具车"用英语怎么说？',type:'choice',options:shuffle(['toy car','toy dog','toy cat','toy bird']),answer:'toy car',hints:['toy=玩具','car=车','toy car'],explain:'toy car = 玩具车',topic:'玩具',lv:2}
+);
+
+// -------- 英语：天气 --------
+QB[1].english.push(
+  {q:'sunny 是什么天气？',type:'choice',options:shuffle(['晴天','雨天','阴天','雪天']),answer:'晴天',hints:['sun=太阳','sunny=晴朗的','晴天'],explain:'sunny = 晴天',topic:'天气',lv:3},
+  {q:'rainy 是什么天气？',type:'choice',options:shuffle(['晴天','雨天','阴天','雪天']),answer:'雨天',hints:['rain=雨','rainy=下雨的','雨天'],explain:'rainy = 雨天',topic:'天气',lv:3},
+  {q:'cold 是什么意思？',type:'choice',options:shuffle(['冷的','热的','暖的','凉的']),answer:'冷的',hints:['c-o-l-d','冬天的感觉','冷的'],explain:'cold = 冷的',topic:'天气',lv:3},
+  {q:'hot 是什么意思？',type:'choice',options:shuffle(['冷的','热的','暖的','凉的']),answer:'热的',hints:['h-o-t','夏天的感觉','热的'],explain:'hot = 热的',topic:'天气',lv:3},
+  {q:'snowy 是什么天气？',type:'choice',options:shuffle(['晴天','雨天','多云','下雪']),answer:'下雪',hints:['snow=雪','snowy=下雪的','下雪'],explain:'snowy = 下雪天',topic:'天气',lv:3}
+);
+
+// -------- 英语：衣服 --------
+QB[1].english.push(
+  {q:'hat 是什么？',type:'choice',options:shuffle(['帽子','裤子','鞋子','裙子']),answer:'帽子',hints:['h-a-t','戴在头上','帽子'],explain:'hat = 帽子',topic:'衣服',lv:3},
+  {q:'shoes 是什么？',type:'choice',options:shuffle(['帽子','裤子','鞋子','裙子']),answer:'鞋子',hints:['s-h-o-e-s','穿在脚上','鞋子'],explain:'shoes = 鞋子',topic:'衣服',lv:3},
+  {q:'dress 是什么？',type:'choice',options:shuffle(['帽子','裤子','鞋子','连衣裙']),answer:'连衣裙',hints:['d-r-e-s-s','女孩穿的','连衣裙'],explain:'dress = 连衣裙',topic:'衣服',lv:3},
+  {q:'"外套"用英语怎么说？',type:'choice',options:shuffle(['coat','hat','shoes','pants']),answer:'coat',hints:['c-o-a-t','天冷穿的','coat'],explain:'coat = 外套',topic:'衣服',lv:3}
+);

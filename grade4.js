@@ -420,3 +420,178 @@ QB[4].science.push(
   {q:'吸烟对呼吸系统有什么害处？',type:'choice',options:shuffle(['损害肺功能可能导致肺癌','没有害处','让肺更健康','帮助呼吸']),answer:'损害肺功能可能导致肺癌',hints:['烟有害','伤害肺','损害肺功能'],explain:'吸烟严重损害呼吸系统',topic:'呼吸系统',lv:3},
   {q:'保护食物链生态平衡最重要的是？',type:'choice',options:shuffle(['保护生物多样性','消灭害虫','砍树建房','排放废水']),answer:'保护生物多样性',hints:['每种生物都有作用','保护多样性','保护生物多样性'],explain:'生物多样性维持生态平衡',topic:'食物链',lv:3}
 );
+
+// =============== 补充题目 — 人教版知识点覆盖 ===============
+
+// -------- 数学：公顷和平方千米 --------
+QB[4].math.push(
+  {q:'1公顷等于多少平方米？',type:'choice',options:shuffle(['1000','10000','100000','1000000']),answer:'10000',hints:['边长100米的正方形','100×100','10000平方米'],explain:'1公顷=10000平方米',topic:'公顷和平方千米',lv:1},
+  {q:'1平方千米等于多少公顷？',type:'choice',options:shuffle(['10','100','1000','10000']),answer:'100',hints:['1km=1000m','1000000÷10000','100公顷'],explain:'1平方千米=100公顷',topic:'公顷和平方千米',lv:2},
+  {q:'一个足球场面积大约7000平方米合多少公顷？',type:'input',answer:'0.7',hints:['1公顷=10000㎡','7000÷10000','0.7公顷'],explain:'平方米换公顷÷10000',topic:'公顷和平方千米',lv:2},
+  {q:'3平方千米等于多少平方米？',type:'input',answer:'3000000',hints:['1平方千米=1000000㎡','3×1000000','3000000'],explain:'平方千米换平方米×1000000',topic:'公顷和平方千米',lv:3},
+  {q:'50000平方米等于多少公顷？',type:'input',answer:'5',hints:['÷10000','50000÷10000','5公顷'],explain:'平方米换公顷÷10000',topic:'公顷和平方千米',lv:2}
+);
+
+// -------- 数学：四则运算与运算顺序 --------
+QB[4].math.push(
+  {q:'200-35×4 = ?',type:'input',answer:'60',hints:['先乘后减','35×4=140','200-140=60'],explain:'先乘除后加减',topic:'四则运算',lv:2},
+  {q:'(200-35)×4 = ?',type:'input',answer:'660',hints:['先算括号','200-35=165','165×4=660'],explain:'有括号先算括号内',topic:'四则运算',lv:2},
+  {q:'36-12=24 用什么验算？',type:'choice',options:shuffle(['24+12=36','36+12','24-12','36×12']),answer:'24+12=36',hints:['减法用加法验','差+减数=被减数','24+12=36'],explain:'减法验算：差+减数=被减数',topic:'四则运算',lv:1},
+  {q:'一个数÷5商12余3这个数是？',type:'input',answer:'63',hints:['被除数=商×除数+余数','12×5+3','63'],explain:'被除数=商×除数+余数',topic:'四则运算',lv:3},
+  {q:'加法和减法是什么关系？',type:'choice',options:shuffle(['互逆运算','相同运算','无关','互补运算']),answer:'互逆运算',hints:['加法反过来是减法','互为逆运算','互逆运算'],explain:'加减互逆乘除互逆',topic:'四则运算',lv:1}
+);
+
+// -------- 数学：小数的意义和性质 --------
+QB[4].math.push(
+  {q:'0.3里面有几个0.1？',type:'choice',options:shuffle(['1个','2个','3个','30个']),answer:'3个',hints:['0.3=3个0.1','十分之三','3个'],explain:'一位小数的计数单位是0.1',topic:'小数的意义',lv:1},
+  {q:'0.30和0.3哪个大？',type:'choice',options:shuffle(['0.30大','0.3大','一样大','无法比较']),answer:'一样大',hints:['末尾加0去0','大小不变','一样大'],explain:'小数末尾添0或去0大小不变',topic:'小数的意义',lv:1},
+  {q:'把3.6的小数点向右移动一位得？',type:'input',answer:'36',hints:['右移一位×10','3.6×10','36'],explain:'小数点右移一位数扩大10倍',topic:'小数的意义',lv:2},
+  {q:'5.26保留一位小数约是？',type:'input',answer:'5.3',hints:['看第二位6','6≥5进1','5.3'],explain:'四舍五入保留一位小数',topic:'小数的意义',lv:2},
+  {q:'比较大小：0.58和0.6谁大？',type:'choice',options:shuffle(['0.58大','0.6大','一样大','无法比较']),answer:'0.6大',hints:['0.6=0.60','58<60','0.6大'],explain:'先对齐小数位数再比较',topic:'小数的意义',lv:2}
+);
+
+// -------- 数学：三角形分类 --------
+QB[4].math.push(
+  {q:'三个角都是锐角的三角形叫？',type:'choice',options:shuffle(['锐角三角形','直角三角形','钝角三角形','等边三角形']),answer:'锐角三角形',hints:['三个角都<90°','锐角三角形','锐角三角形'],explain:'三个角都是锐角=锐角三角形',topic:'三角形',lv:1},
+  {q:'有一个角是直角的三角形叫？',type:'choice',options:shuffle(['锐角三角形','直角三角形','钝角三角形','等腰三角形']),answer:'直角三角形',hints:['一个角=90°','直角三角形','直角三角形'],explain:'有一个直角=直角三角形',topic:'三角形',lv:1},
+  {q:'等边三角形每个角是多少度？',type:'input',answer:'60',hints:['三个角相等','180÷3','60度'],explain:'等边三角形三个角都是60°',topic:'三角形',lv:2},
+  {q:'三角形两边之和与第三边的关系？',type:'choice',options:shuffle(['大于第三边','等于第三边','小于第三边','不确定']),answer:'大于第三边',hints:['三边关系','两边之和>第三边','大于'],explain:'三角形任意两边之和大于第三边',topic:'三角形',lv:2},
+  {q:'三角形内角和是多少度？',type:'input',answer:'180',hints:['所有三角形都一样','三个角加起来','180度'],explain:'三角形内角和=180°',topic:'三角形',lv:1}
+);
+
+// -------- 数学：图形的运动 --------
+QB[4].math.push(
+  {q:'把图形沿直线方向移动一定距离叫什么？',type:'choice',options:shuffle(['平移','旋转','对称','翻转']),answer:'平移',hints:['沿直线移动','方向+距离','平移'],explain:'平移=沿一个方向移动',topic:'图形的运动',lv:1},
+  {q:'钟表指针的运动属于什么？',type:'choice',options:shuffle(['平移','旋转','对称','翻转']),answer:'旋转',hints:['绕一个点转动','指针转圈','旋转'],explain:'绕一个点转动=旋转',topic:'图形的运动',lv:1},
+  {q:'正方形有几条对称轴？',type:'choice',options:shuffle(['1条','2条','4条','无数条']),answer:'4条',hints:['水平竖直各1条','对角线2条','共4条'],explain:'正方形有4条对称轴',topic:'图形的运动',lv:2},
+  {q:'圆有几条对称轴？',type:'choice',options:shuffle(['1条','2条','4条','无数条']),answer:'无数条',hints:['任意直径','都是对称轴','无数条'],explain:'圆有无数条对称轴',topic:'图形的运动',lv:2},
+  {q:'等腰三角形有几条对称轴？',type:'choice',options:shuffle(['0条','1条','2条','3条']),answer:'1条',hints:['沿顶角平分线折','1条','1条'],explain:'等腰三角形有1条对称轴',topic:'图形的运动',lv:2}
+);
+
+// -------- 数学：平均数 --------
+QB[4].math.push(
+  {q:'4个同学身高132、136、140、144厘米平均身高？',type:'input',answer:'138',hints:['先求总和552','552÷4','138厘米'],explain:'平均数=总数÷个数',topic:'平均数',lv:2},
+  {q:'小明5次成绩：90、85、95、80、100平均分？',type:'input',answer:'90',hints:['总分450','450÷5','90分'],explain:'平均分=总分÷次数',topic:'平均数',lv:2},
+  {q:'3个数平均12加一个数后平均15第四个数？',type:'input',answer:'24',hints:['原总和3×12=36','新总和4×15=60','60-36=24'],explain:'新总和-原总和=新增的数',topic:'平均数',lv:3},
+  {q:'一组数据3、5、7、9、6平均数是？',type:'input',answer:'6',hints:['3+5+7+9+6=30','30÷5','6'],explain:'平均数=总数÷个数',topic:'平均数',lv:2}
+);
+
+// -------- 数学：运算定律 --------
+QB[4].math.push(
+  {q:'a+b=b+a 这是什么运算定律？',type:'choice',options:shuffle(['加法交换律','加法结合律','乘法交换律','乘法分配律']),answer:'加法交换律',hints:['交换位置','和不变','加法交换律'],explain:'交换加数位置和不变',topic:'运算定律',lv:1},
+  {q:'a×(b+c)=a×b+a×c 这是什么定律？',type:'choice',options:shuffle(['乘法分配律','乘法交换律','乘法结合律','加法结合律']),answer:'乘法分配律',hints:['分别乘再加','分配律','乘法分配律'],explain:'一个数乘两数的和=分别乘再加',topic:'运算定律',lv:2},
+  {q:'(a×b)×c=a×(b×c) 这是什么定律？',type:'choice',options:shuffle(['乘法结合律','乘法交换律','乘法分配律','加法结合律']),answer:'乘法结合律',hints:['改变结合方式','积不变','乘法结合律'],explain:'先乘谁都行积不变',topic:'运算定律',lv:2},
+  {q:'25×13×4 怎样简便计算？',type:'choice',options:shuffle(['25×4×13','25+4×13','13×4+25','(25+13)×4']),answer:'25×4×13',hints:['25×4=100','交换律','25×4×13=1300'],explain:'利用乘法交换律凑整百',topic:'运算定律',lv:2}
+);
+
+// -------- 语文：古诗补充 --------
+QB[4].chinese.push(
+  {q:'"一道残阳铺水中"下一句？',type:'choice',options:shuffle(['半江瑟瑟半江红','可怜九月初三夜','露似真珠月似弓','大漠沙如雪']),answer:'半江瑟瑟半江红',hints:['白居易《暮江吟》','残阳照水','半江瑟瑟半江红'],explain:'白居易《暮江吟》',topic:'古诗',lv:2},
+  {q:'"梅须逊雪三分白"下一句？',type:'choice',options:shuffle(['雪却输梅一段香','遥知不是雪','为有暗香来','忽如一夜春风来']),answer:'雪却输梅一段香',hints:['卢钺《雪梅》','梅和雪互比','雪却输梅一段香'],explain:'卢钺《雪梅》',topic:'古诗',lv:2},
+  {q:'"但使龙城飞将在"下一句？',type:'choice',options:shuffle(['不教胡马度阴山','万里长征人未还','秦时明月汉时关','醉卧沙场君莫笑']),answer:'不教胡马度阴山',hints:['王昌龄《出塞》','边塞诗','不教胡马度阴山'],explain:'王昌龄《出塞》',topic:'古诗',lv:2},
+  {q:'"儿童急走追黄蝶"下一句？',type:'choice',options:shuffle(['飞入菜花无处寻','小扣柴扉久不开','忙趁东风放纸鸢','草长莺飞二月天']),answer:'飞入菜花无处寻',hints:['杨万里《宿新市徐公店》','追蝴蝶','飞入菜花无处寻'],explain:'杨万里《宿新市徐公店》',topic:'古诗',lv:2},
+  {q:'"不要人夸好颜色"下一句？',type:'choice',options:shuffle(['只留清气满乾坤','疑是地上霜','为有暗香来','遥知不是雪']),answer:'只留清气满乾坤',hints:['王冕《墨梅》','品格高洁','只留清气满乾坤'],explain:'王冕《墨梅》',topic:'古诗',lv:2},
+  {q:'"生当作人杰"下一句？',type:'choice',options:shuffle(['死亦为鬼雄','至今思项羽','不肯过江东','壮志饥餐胡虏肉']),answer:'死亦为鬼雄',hints:['李清照《夏日绝句》','气节','死亦为鬼雄'],explain:'李清照《夏日绝句》',topic:'古诗',lv:2},
+  {q:'"黄河远上白云间"下一句？',type:'choice',options:shuffle(['一片孤城万仞山','春风不度玉门关','羌笛何须怨杨柳','万里长征人未还']),answer:'一片孤城万仞山',hints:['王之涣《凉州词》','边塞景色','一片孤城万仞山'],explain:'王之涣《凉州词》',topic:'古诗',lv:2}
+);
+
+// -------- 语文：文言文 --------
+QB[4].chinese.push(
+  {q:'"精卫填海"中精卫原来是谁？',type:'choice',options:shuffle(['炎帝的小女儿女娃','王母娘娘','嫦娥','织女']),answer:'炎帝的小女儿女娃',hints:['炎帝之少女','溺于东海','化为精卫鸟'],explain:'精卫是炎帝之女女娃溺海后化鸟填海',topic:'文言文',lv:2},
+  {q:'"王戎不取道旁李"王戎为什么不摘李子？',type:'choice',options:shuffle(['路边多果必是苦李','不喜欢吃李子','李子太高够不着','有人看守']),answer:'路边多果必是苦李',hints:['路边多子必苦','善于推理','苦李'],explain:'善于观察和推理',topic:'文言文',lv:3},
+  {q:'文言文中"少女"是什么意思？',type:'choice',options:shuffle(['小女儿','年轻女子','少年女孩','很少的女子']),answer:'小女儿',hints:['古文少=小','少女=小女儿','小女儿'],explain:'古文中少女=小女儿',topic:'文言文',lv:2},
+  {q:'"盘古开天地"的故事属于什么体裁？',type:'choice',options:shuffle(['神话','寓言','童话','小说']),answer:'神话',hints:['远古传说','神话故事','神话'],explain:'盘古开天地是中国古代神话',topic:'文言文',lv:1}
+);
+
+// -------- 语文：标点符号 --------
+QB[4].chinese.push(
+  {q:'引用别人的话时用什么标点引出？',type:'choice',options:shuffle(['冒号和引号','句号','逗号','感叹号']),answer:'冒号和引号',hints:['某某说："..."','冒号+引号','冒号和引号'],explain:'引用的话用冒号和引号',topic:'标点符号',lv:1},
+  {q:'并列的词语之间用什么标点？',type:'choice',options:shuffle(['顿号','逗号','句号','分号']),answer:'顿号',hints:['苹果、香蕉、橘子','并列用顿号','顿号'],explain:'并列词语之间用顿号(、)',topic:'标点符号',lv:2},
+  {q:'表示省略内容用什么标点？',type:'choice',options:shuffle(['省略号','破折号','书名号','引号']),answer:'省略号',hints:['六个点……','省略号','省略号'],explain:'省略号表示省略的内容',topic:'标点符号',lv:2},
+  {q:'书名、篇名用什么标点？',type:'choice',options:shuffle(['书名号','引号','括号','破折号']),answer:'书名号',hints:['《》','书名号','书名号'],explain:'书名篇名用书名号《》',topic:'标点符号',lv:2}
+);
+
+// -------- 英语：教室词汇 --------
+QB[4].english.push(
+  {q:'blackboard 是什么？',type:'choice',options:shuffle(['黑板','白板','书桌','椅子']),answer:'黑板',hints:['black+board','教室前面','黑板'],explain:'blackboard = 黑板',topic:'教室词汇',lv:1},
+  {q:'"Turn on the light" 意思是？',type:'choice',options:shuffle(['开灯','关灯','开门','关门']),answer:'开灯',hints:['turn on=打开','light=灯','开灯'],explain:'turn on the light = 开灯',topic:'教室词汇',lv:1},
+  {q:'"Let me clean the window" 意思？',type:'choice',options:shuffle(['让我擦窗户','让我开窗户','让我关窗户','让我看窗户']),answer:'让我擦窗户',hints:['clean=擦/打扫','window=窗户','让我擦窗户'],explain:'clean the window = 擦窗户',topic:'教室词汇',lv:2},
+  {q:'computer 是什么？',type:'choice',options:shuffle(['电脑','电视','电话','空调']),answer:'电脑',hints:['c-o-m-p-u-t-e-r','教室里用的','电脑'],explain:'computer = 电脑',topic:'教室词汇',lv:1}
+);
+
+// -------- 英语：房间与介词 --------
+QB[4].english.push(
+  {q:'bedroom 是什么？',type:'choice',options:shuffle(['卧室','客厅','厨房','卫生间']),answer:'卧室',hints:['bed+room','睡觉的房间','卧室'],explain:'bedroom = 卧室',topic:'房间与介词',lv:1},
+  {q:'kitchen 是什么？',type:'choice',options:shuffle(['卧室','客厅','厨房','卫生间']),answer:'厨房',hints:['k-i-t-c-h-e-n','做饭的地方','厨房'],explain:'kitchen = 厨房',topic:'房间与介词',lv:1},
+  {q:'"The book is _____ the desk." 书在桌上',type:'choice',options:shuffle(['on','in','under','behind']),answer:'on',hints:['在上面=on','on the desk','on'],explain:'on = 在...上面',topic:'房间与介词',lv:2},
+  {q:'"The cat is _____ the chair." 猫在椅子下面',type:'choice',options:shuffle(['on','in','under','behind']),answer:'under',hints:['在下面=under','under the chair','under'],explain:'under = 在...下面',topic:'房间与介词',lv:2},
+  {q:'living room 是什么？',type:'choice',options:shuffle(['卧室','客厅','厨房','书房']),answer:'客厅',hints:['living=生活','客厅','客厅'],explain:'living room = 客厅',topic:'房间与介词',lv:1}
+);
+
+// -------- 英语：食物词汇 --------
+QB[4].english.push(
+  {q:'rice 是什么？',type:'choice',options:shuffle(['米饭','面条','面包','蛋糕']),answer:'米饭',hints:['r-i-c-e','中国人主食','米饭'],explain:'rice = 米饭(不可数)',topic:'食物词汇',lv:1},
+  {q:'noodles 是什么？',type:'choice',options:shuffle(['面条','米饭','面包','蛋糕']),answer:'面条',hints:['n-o-o-d-l-e-s','常用复数','面条'],explain:'noodles = 面条',topic:'食物词汇',lv:1},
+  {q:'"Pass me the chopsticks" 中 chopsticks 是？',type:'choice',options:shuffle(['筷子','叉子','刀','勺子']),answer:'筷子',hints:['中国人用的餐具','chopsticks','筷子'],explain:'chopsticks=筷子 fork=叉 knife=刀 spoon=勺',topic:'食物词汇',lv:2},
+  {q:'"Help yourself!" 是什么意思？',type:'choice',options:shuffle(['请自便/随便吃','帮帮我','你自己来','帮助别人']),answer:'请自便/随便吃',hints:['招待客人用语','自己动手','请自便'],explain:'Help yourself = 请自便',topic:'食物词汇',lv:2},
+  {q:'vegetable 是什么？',type:'choice',options:shuffle(['蔬菜','水果','肉类','主食']),answer:'蔬菜',hints:['v-e-g-e-t-a-b-l-e','绿色健康的','蔬菜'],explain:'vegetable = 蔬菜',topic:'食物词汇',lv:1}
+);
+
+// -------- 英语：家庭与职业 --------
+QB[4].english.push(
+  {q:'doctor 是什么职业？',type:'choice',options:shuffle(['医生','老师','司机','农民']),answer:'医生',hints:['d-o-c-t-o-r','看病的','医生'],explain:'doctor = 医生',topic:'家庭与职业',lv:1},
+  {q:'nurse 是什么职业？',type:'choice',options:shuffle(['护士','医生','老师','司机']),answer:'护士',hints:['n-u-r-s-e','照顾病人','护士'],explain:'nurse = 护士',topic:'家庭与职业',lv:1},
+  {q:'uncle 是什么意思？',type:'choice',options:shuffle(['叔叔/舅舅','阿姨','爷爷','哥哥']),answer:'叔叔/舅舅',hints:['父母的兄弟','uncle','叔叔/舅舅'],explain:'uncle = 叔叔/伯伯/舅舅',topic:'家庭与职业',lv:2},
+  {q:'"What\'s your father\'s job?" 在问什么？',type:'choice',options:shuffle(['你爸爸做什么工作','你爸爸在哪里','你爸爸多大','你爸爸叫什么']),answer:'你爸爸做什么工作',hints:['job=工作','问职业','你爸爸做什么工作'],explain:'问职业用What\'s...job?',topic:'家庭与职业',lv:2}
+);
+
+// -------- 英语：农场词汇 --------
+QB[4].english.push(
+  {q:'tomato 的复数是？',type:'choice',options:shuffle(['tomatoes','tomatos','tomatoies','tomatoss']),answer:'tomatoes',hints:['以o结尾加es','tomato+es','tomatoes'],explain:'tomato→tomatoes(有生命的o结尾加es)',topic:'农场词汇',lv:2},
+  {q:'horse 是什么动物？',type:'choice',options:shuffle(['马','牛','羊','鸡']),answer:'马',hints:['h-o-r-s-e','可以骑的','马'],explain:'horse = 马',topic:'农场词汇',lv:1},
+  {q:'sheep 的复数形式是？',type:'choice',options:shuffle(['sheep','sheeps','sheepes','sheepies']),answer:'sheep',hints:['单复数同形','不变化','sheep'],explain:'sheep 单复数同形',topic:'农场词汇',lv:2},
+  {q:'cow 和 hen 分别是什么？',type:'choice',options:shuffle(['奶牛和母鸡','马和羊','猪和鸭','狗和猫']),answer:'奶牛和母鸡',hints:['cow=奶牛','hen=母鸡','奶牛和母鸡'],explain:'cow=奶牛 hen=母鸡',topic:'农场词汇',lv:1}
+);
+
+// -------- 英语：衣服词汇 --------
+QB[4].english.push(
+  {q:'dress 是什么？',type:'choice',options:shuffle(['连衣裙','衬衫','裤子','外套']),answer:'连衣裙',hints:['d-r-e-s-s','女孩穿的','连衣裙'],explain:'dress = 连衣裙',topic:'衣服词汇',lv:1},
+  {q:'"Put on your coat" 意思是？',type:'choice',options:shuffle(['穿上外套','脱掉外套','买外套','洗外套']),answer:'穿上外套',hints:['put on=穿上','coat=外套','穿上外套'],explain:'put on = 穿上',topic:'衣服词汇',lv:1},
+  {q:'"Whose coat is this?" "It\'s _____." 我的',type:'choice',options:shuffle(['mine','my','I','me']),answer:'mine',hints:['名词性物主代词','mine=我的东西','mine'],explain:'mine=我的(后面不加名词)',topic:'衣服词汇',lv:2},
+  {q:'pants 和 shorts 分别是？',type:'choice',options:shuffle(['长裤和短裤','裙子和短裤','外套和上衣','袜子和鞋子']),answer:'长裤和短裤',hints:['pants=长裤','shorts=短裤','长裤和短裤'],explain:'pants=长裤 shorts=短裤',topic:'衣服词汇',lv:1}
+);
+
+// -------- 科学：溶解 --------
+QB[4].science.push(
+  {q:'把食盐放入水中搅拌后食盐怎么了？',type:'choice',options:shuffle(['溶解了看不见了','沉到底了','浮在上面','变色了']),answer:'溶解了看不见了',hints:['食盐能溶于水','均匀分布','溶解了'],explain:'食盐溶解在水中均匀分布',topic:'溶解',lv:1},
+  {q:'下列哪种物质不能溶解在水中？',type:'choice',options:shuffle(['沙子','食盐','白糖','小苏打']),answer:'沙子',hints:['沙子不溶于水','会沉淀','沙子'],explain:'沙子不溶于水',topic:'溶解',lv:1},
+  {q:'怎样加快食盐在水中的溶解？',type:'choice',options:shuffle(['搅拌、加热、研碎','不动等待','加更多盐','降温']),answer:'搅拌、加热、研碎',hints:['搅拌加快','加热加快','研碎加快'],explain:'搅拌、加热、研碎都能加快溶解',topic:'溶解',lv:2},
+  {q:'一杯水能无限溶解食盐吗？',type:'choice',options:shuffle(['不能会饱和','能','能但很慢','看水温']),answer:'不能会饱和',hints:['饱和溶液','不能再溶了','有限量'],explain:'一定量水只能溶解一定量盐',topic:'溶解',lv:2},
+  {q:'把溶解在水中的盐取回来用什么方法？',type:'choice',options:shuffle(['蒸发','过滤','搅拌','冷却']),answer:'蒸发',hints:['加热蒸发水','盐留下','蒸发'],explain:'蒸发结晶可以分离盐和水',topic:'溶解',lv:3}
+);
+
+// -------- 科学：身体结构 --------
+QB[4].science.push(
+  {q:'人体的支架是什么？',type:'choice',options:shuffle(['骨骼','肌肉','皮肤','血管']),answer:'骨骼',hints:['支撑身体','框架','骨骼'],explain:'骨骼是人体的支架',topic:'身体结构',lv:1},
+  {q:'骨和骨之间的连接叫什么？',type:'choice',options:shuffle(['关节','肌肉','韧带','骨髓']),answer:'关节',hints:['连接两块骨','可以活动','关节'],explain:'关节连接骨与骨使身体能活动',topic:'身体结构',lv:1},
+  {q:'使骨骼运动的是什么？',type:'choice',options:shuffle(['肌肉','关节','皮肤','血液']),answer:'肌肉',hints:['收缩牵动骨骼','带动运动','肌肉'],explain:'肌肉收缩和舒张带动骨骼运动',topic:'身体结构',lv:2},
+  {q:'运动后心跳和呼吸会怎样变化？',type:'choice',options:shuffle(['加快','变慢','不变','停止']),answer:'加快',hints:['需要更多氧气','加快供氧','加快'],explain:'运动需要更多氧气心跳呼吸加快',topic:'身体结构',lv:2}
+);
+
+// -------- 科学：动植物繁殖 --------
+QB[4].science.push(
+  {q:'一朵完全花由哪些部分组成？',type:'choice',options:shuffle(['花萼花瓣雄蕊雌蕊','只有花瓣','只有花蕊','花萼和花瓣']),answer:'花萼花瓣雄蕊雌蕊',hints:['四个部分','由外到里','花萼花瓣雄蕊雌蕊'],explain:'完全花有花萼花瓣雄蕊雌蕊四部分',topic:'动植物繁殖',lv:1},
+  {q:'花粉从雄蕊传到雌蕊的过程叫什么？',type:'choice',options:shuffle(['传粉','开花','结果','发芽']),answer:'传粉',hints:['花粉转移','传粉','传粉'],explain:'传粉是花粉从雄蕊传到雌蕊的过程',topic:'动植物繁殖',lv:2},
+  {q:'蒲公英的种子靠什么传播？',type:'choice',options:shuffle(['风','水','动物','弹射']),answer:'风',hints:['有小伞结构','随风飘散','风'],explain:'蒲公英靠风传播种子',topic:'动植物繁殖',lv:2},
+  {q:'蝴蝶的一生经历哪几个阶段？',type:'choice',options:shuffle(['卵→幼虫→蛹→成虫','卵→成虫','幼虫→成虫','卵→蛹→成虫']),answer:'卵→幼虫→蛹→成虫',hints:['完全变态发育','四个阶段','卵幼虫蛹成虫'],explain:'蝴蝶属于完全变态发育',topic:'动植物繁殖',lv:3},
+  {q:'苍耳的种子靠什么传播？',type:'choice',options:shuffle(['动物皮毛','风','水','弹射']),answer:'动物皮毛',hints:['表面有钩刺','粘在动物身上','动物皮毛'],explain:'苍耳靠钩刺粘在动物皮毛上传播',topic:'动植物繁殖',lv:2}
+);
+
+// -------- 科学：食物与营养 --------
+QB[4].science.push(
+  {q:'米饭面包主要提供什么营养？',type:'choice',options:shuffle(['糖类(碳水化合物)','蛋白质','脂肪','维生素']),answer:'糖类(碳水化合物)',hints:['主食','提供能量','糖类'],explain:'米饭面包主要含糖类提供能量',topic:'食物营养',lv:1},
+  {q:'牛奶鸡蛋主要提供什么营养？',type:'choice',options:shuffle(['蛋白质','糖类','脂肪','矿物质']),answer:'蛋白质',hints:['生长发育需要','蛋白质丰富','蛋白质'],explain:'牛奶鸡蛋富含蛋白质',topic:'食物营养',lv:1},
+  {q:'新鲜蔬菜水果主要提供什么营养？',type:'choice',options:shuffle(['维生素','蛋白质','脂肪','糖类']),answer:'维生素',hints:['蔬菜水果','维生素丰富','维生素'],explain:'新鲜蔬果富含维生素',topic:'食物营养',lv:2},
+  {q:'为什么不能吃变质食物？',type:'choice',options:shuffle(['有害细菌危害健康','味道不好','颜色不好','没有区别']),answer:'有害细菌危害健康',hints:['食品安全','细菌繁殖','有害健康'],explain:'变质食物产生有害细菌危害健康',topic:'食物营养',lv:2},
+  {q:'均衡膳食是什么意思？',type:'choice',options:shuffle(['各种食物搭配吃','只吃肉','只吃蔬菜','想吃什么吃什么']),answer:'各种食物搭配吃',hints:['营养全面','荤素搭配','各种食物搭配'],explain:'均衡膳食=各类食物合理搭配',topic:'食物营养',lv:1}
+);

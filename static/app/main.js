@@ -1,62 +1,72 @@
 // 应用入口 — 视图路由 + 关卡选择 + 引擎实例化
-//
-// 设计说明：
-//  - 关卡 = 题目集合 × 引擎玩法（解耦）
-//  - 题目集合由 picker (lib/picker.js) 提供，参数：grade/subject/lv/topic/source
-//  - 引擎玩法：battle / shooting / fighting
-//  - 主页面只渲染骨架；引擎独占 #stage 容器内 DOM
-
 import * as data from './data.js';
 import { $, $$, toast, showConfirm, confetti, loadJSON, saveJSON } from './ui.js';
 import { speak, preloadBattle, toggleVoice, isEnabled, stopSpeak, clearTTSCache } from './tts.js';
-import { renderPet, evolveIfNeeded, petByExp } from './pets.js';
+import { renderPet, evolveIfNeeded, petByExp, PET_STAGES, nextPetThreshold } from './pets.js';
 import { loadAICfg, saveAICfg, syncTTSConfig, explainQuestion, recognizeQuestionsFromPhoto, fileToBase64 } from './ai.js';
+import {
+  migrateState, recordCorrect, recordWrong, recordLevelComplete,
+  computeStarRating, computeRewards, awardDaily,
+} from './state.js';
+import { ACHIEVEMENTS, checkAchievements, totalAchievements } from './achievements.js';
+import * as audio from './audio.js';
 
 import { BattleEngine } from './engines/battle.js';
 import { ShootingEngine } from './engines/shooting.js';
 import { FightingEngine } from './engines/fighting.js';
 
 const SAVE_KEY = 'scholar_odyssey_save_v1';
-const DEFAULT_SAVE = {
-  user: 'default',
-  exp: 0,
-  petStage: 0,
-  gold: 0,
-  achievements: [],
-  prefs: { engine: 'battle', source: 'mixed' },
-};
-
-const SAVE = Object.assign({}, DEFAULT_SAVE, loadJSON(SAVE_KEY, {}));
-SAVE.prefs = Object.assign({}, DEFAULT_SAVE.prefs, SAVE.prefs || {});
+const SAVE = migrateState(loadJSON(SAVE_KEY, null));
 syncTTSConfig();
+audio.setMuted(SAVE.prefs.muted || false);
 
 function persistSave() { saveJSON(SAVE_KEY, SAVE); }
+function refreshAll() { renderTopbar(); renderPet($('#pet-area'), SAVE); }
 
 // ---------- 顶部状态栏 ----------
 function renderTopbar() {
   const bar = $('#topbar');
   if (!bar) return;
   const pet = petByExp(SAVE.exp || 0);
+  const next = nextPetThreshold(SAVE.exp || 0);
+  const progress = next ? Math.round(((SAVE.exp - pet.threshold) / (next - pet.threshold)) * 100) : 100;
   bar.innerHTML = `
     <div class="tb-left">
-      <span class="tb-pet">${pet.emoji} ${pet.name}</span>
-      <span class="tb-exp">EXP ${SAVE.exp}</span>
-      <span class="tb-gold">💎 ${SAVE.gold}</span>
+      <span class="tb-pet" title="${pet.name} Lv ${pet.stage + 1} · 距下一阶段还需 ${next ? (next - SAVE.exp) : 0} EXP">
+        ${pet.emoji} <b>${pet.name}</b>
+        <span class="tb-mini-bar"><span style="width:${progress}%"></span></span>
+      </span>
+      <span class="tb-exp">⚡ ${SAVE.exp}</span>
+      <span class="tb-gold">🪙 ${SAVE.gold || 0}</span>
+      <span class="tb-gem">💎 ${SAVE.gems || 0}</span>
+      ${(SAVE.streak || 0) > 0 ? `<span class="tb-streak" title="连续登录 ${SAVE.streak} 天">🔥 ${SAVE.streak}</span>` : ''}
     </div>
     <div class="tb-right">
-      <button id="btn-voice" class="btn-mini">${isEnabled() ? '🔊' : '🔇'}</button>
-      <button id="btn-photo" class="btn-mini">📷 拍照</button>
-      <button id="btn-wrongbook" class="btn-mini">📚 错题</button>
+      <button id="btn-voice" class="btn-mini" title="${isEnabled() ? '语音开' : '语音关'}">${isEnabled() ? '🔊' : '🔇'}</button>
+      <button id="btn-mute" class="btn-mini" title="${audio.isMuted() ? '音效关' : '音效开'}">${audio.isMuted() ? '🔕' : '🎵'}</button>
+      <button id="btn-daily" class="btn-mini" title="每日任务">📋</button>
+      <button id="btn-achv" class="btn-mini" title="成就">🏆 ${SAVE.achievements.length}/${totalAchievements()}</button>
+      <button id="btn-photo" class="btn-mini">📷</button>
+      <button id="btn-wrongbook" class="btn-mini">📚</button>
       <button id="btn-settings" class="btn-mini">⚙️</button>
     </div>
   `;
   $('#btn-voice').addEventListener('click', () => {
-    const on = toggleVoice();
-    $('#btn-voice').textContent = on ? '🔊' : '🔇';
+    audio.sfxClick();
+    toggleVoice(); refreshAll();
   });
-  $('#btn-photo').addEventListener('click', openPhotoFlow);
-  $('#btn-wrongbook').addEventListener('click', openWrongbook);
-  $('#btn-settings').addEventListener('click', openSettings);
+  $('#btn-mute').addEventListener('click', () => {
+    const newMuted = !audio.isMuted();
+    audio.setMuted(newMuted);
+    SAVE.prefs.muted = newMuted; persistSave();
+    if (!newMuted) audio.sfxClick();
+    refreshAll();
+  });
+  $('#btn-daily').addEventListener('click', () => { audio.sfxClick(); openDaily(); });
+  $('#btn-achv').addEventListener('click', () => { audio.sfxClick(); openAchievements(); });
+  $('#btn-photo').addEventListener('click', () => { audio.sfxClick(); openPhotoFlow(); });
+  $('#btn-wrongbook').addEventListener('click', () => { audio.sfxClick(); openWrongbook(); });
+  $('#btn-settings').addEventListener('click', () => { audio.sfxClick(); openSettings(); });
 }
 
 // ---------- 关卡选择 UI ----------
@@ -66,28 +76,26 @@ const SUBJECTS = [
   { key: 'english', label: '英语', icon: '🔤' },
   { key: 'science', label: '科学', icon: '🔬' },
 ];
-
 const ENGINES = [
   { key: 'battle', label: '⚔️ 战斗' },
   { key: 'shooting', label: '🎯 射击' },
   { key: 'fighting', label: '🥋 格斗' },
 ];
-
 const SOURCES = [
   { key: 'mixed', label: '混合' },
   { key: 'static', label: '仅静态' },
   { key: 'generated', label: '生成器' },
-  { key: 'wrongbook-practice', label: '📚 错题练习' },
+  { key: 'wrongbook-practice', label: '📚 错题' },
 ];
 
 const sel = {
-  grade: 1, subject: 'math', lv: 1, semester: '',
+  grade: SAVE.grade || 1, subject: 'math', lv: 1, semester: '',
   engine: SAVE.prefs.engine || 'battle',
   source: SAVE.prefs.source || 'mixed',
   count: 10,
 };
 
-let AVAILABILITY = null;  // { [grade]: { [subject]: { semesters:[], lvs:[], cells:{} } } }
+let AVAILABILITY = null;
 
 function isSubjectAvailable(grade, subject) {
   if (!AVAILABILITY) return true;
@@ -96,33 +104,33 @@ function isSubjectAvailable(grade, subject) {
 function isLvAvailable(grade, subject, lv) {
   if (!AVAILABILITY) return true;
   const s = AVAILABILITY[grade]?.[subject];
-  if (!s) return false;
-  return s.lvs.includes(lv);
+  return s ? s.lvs.includes(lv) : false;
 }
 function isSemesterAvailable(grade, subject, semester) {
   if (!AVAILABILITY || !semester) return true;
   const s = AVAILABILITY[grade]?.[subject];
-  if (!s) return false;
-  return s.semesters.includes(semester);
+  return s ? s.semesters.includes(semester) : false;
 }
 
 function renderLevelSelect() {
   const home = $('#home');
   if (!home) return;
-  // 自动修正：当前选的 subject/lv/semester 不可用时跳到第一个可用的
   if (AVAILABILITY) {
     if (!isSubjectAvailable(sel.grade, sel.subject)) {
-      const firstAvail = SUBJECTS.find(s => isSubjectAvailable(sel.grade, s.key));
-      if (firstAvail) sel.subject = firstAvail.key;
+      const f = SUBJECTS.find(s => isSubjectAvailable(sel.grade, s.key));
+      if (f) sel.subject = f.key;
     }
     if (!isLvAvailable(sel.grade, sel.subject, sel.lv)) {
-      const firstLv = [1,2,3].find(l => isLvAvailable(sel.grade, sel.subject, l));
-      if (firstLv) sel.lv = firstLv;
+      const f = [1, 2, 3].find(l => isLvAvailable(sel.grade, sel.subject, l));
+      if (f) sel.lv = f;
     }
-    if (sel.semester && !isSemesterAvailable(sel.grade, sel.subject, sel.semester)) {
-      sel.semester = '';
-    }
+    if (sel.semester && !isSemesterAvailable(sel.grade, sel.subject, sel.semester)) sel.semester = '';
   }
+  // 关卡进度提示
+  const key = `g${sel.grade}.${sel.subject}.lv${sel.lv}`;
+  const cleared = SAVE.clearedLevels[key];
+  const starsHtml = cleared ? '⭐'.repeat(cleared.bestStars) + '☆'.repeat(3 - cleared.bestStars) : '☆☆☆';
+
   home.innerHTML = `
     <h1 class="home-title">🎓 学霸奇遇记</h1>
     <div class="ls-row"><span>年级</span>${[1,2,3,4,5,6].map(g => btn('g', g, '年级' + g, sel.grade === g, false)).join('')}</div>
@@ -132,13 +140,15 @@ function renderLevelSelect() {
     <div class="ls-row"><span>玩法</span>${ENGINES.map(e => btn('e', e.key, e.label, sel.engine === e.key, false)).join('')}</div>
     <div class="ls-row"><span>来源</span>${SOURCES.map(s => btn('src', s.key, s.label, sel.source === s.key, false)).join('')}</div>
     <div class="ls-row"><span>题数</span>${[5,10,15].map(c => btn('cnt', c, c + '题', sel.count === c, false)).join('')}</div>
+    <div class="ls-prog">本关最佳: <b>${starsHtml}</b>${cleared ? ` · 通过 ${cleared.times} 次` : ' · 未通关'}</div>
     <button id="btn-start" class="btn-start">🚀 开始闯关</button>
   `;
   home.querySelectorAll('.ls-btn').forEach(b => {
-    if (b.classList.contains('disabled')) return;  // 灰按钮不响应
+    if (b.classList.contains('disabled')) return;
     b.addEventListener('click', () => {
+      audio.sfxClick();
       const k = b.dataset.kind, v = b.dataset.val;
-      if (k === 'g') sel.grade = Number(v);
+      if (k === 'g') { sel.grade = Number(v); SAVE.grade = sel.grade; persistSave(); }
       else if (k === 's') sel.subject = v;
       else if (k === 'l') sel.lv = Number(v);
       else if (k === 'sm') sel.semester = v;
@@ -148,7 +158,7 @@ function renderLevelSelect() {
       renderLevelSelect();
     });
   });
-  $('#btn-start').addEventListener('click', startLevel);
+  $('#btn-start').addEventListener('click', () => { audio.sfxLevelUp(); startLevel(); });
   function btn(kind, val, label, active, disabled) {
     const cls = ['ls-btn'];
     if (active) cls.push('active');
@@ -170,15 +180,18 @@ async function startLevel() {
     questions = res.questions || [];
     fallback = res.fallback;
   } catch (e) {
+    audio.sfxWrong();
     toast('抽题失败: ' + e.message); return;
   }
   if (!questions.length) {
-    toast('该筛选条件下没有可用题目，请换组合（科目/难度/学期）'); return;
+    audio.sfxWrong();
+    toast('该筛选条件下没有可用题目'); return;
   }
   if (fallback) toast('⚠️ ' + fallback, 2400);
-  if (questions.length < sel.count) toast(`⚠️ 题库仅 ${questions.length} 题（你选了 ${sel.count}）`, 2600);
+  if (questions.length < sel.count) toast(`⚠️ 题库仅 ${questions.length} 题`, 2600);
 
-  preloadBattle(questions);  // 主入口为题集预热 TTS（引擎内不直连 tts.js）
+  preloadBattle(questions);
+  SAVE._lastSource = sel.source;  // 给成就检查用
 
   const stage = $('#stage');
   stage.classList.add('show');
@@ -192,46 +205,111 @@ async function startLevel() {
     container: stage,
     questions,
     callbacks: {
-      onCorrect: q => { SAVE.exp += 5; renderTopbar(); persistSave(); },
-      onWrong: () => {},
+      onCorrect: q => {
+        recordCorrect(SAVE, { exp: 5 });
+        audio.sfxHit();
+        refreshAll();
+        persistSave();
+      },
+      onWrong: () => {
+        recordWrong(SAVE);
+        audio.sfxWrong();
+        refreshAll();
+        persistSave();
+      },
       onWrongAdd: async (q, userAnswer) => {
         try {
-          await data.wrongbookAdd(SAVE.user, {
-            ...q, userAnswer, source: q.source || 'level',
-          });
+          await data.wrongbookAdd(SAVE.user, { ...q, userAnswer, source: q.source || 'level' });
         } catch (e) { console.warn('wrongbookAdd 失败:', e); }
       },
       onComplete: async ({ result, stats }) => {
         await new Promise(r => setTimeout(r, 600));
-        const evolved = evolveIfNeeded(SAVE);
-        persistSave();
-        renderTopbar();
-        const summary = `${result === 'win' ? '🏆 胜利！' : result === 'fail' ? '💔 失败' : '✅ 完成'}\n答对 ${stats.correct}\n答错 ${stats.wrong}\n${stats.maxCombo ? '最高连击 ' + stats.maxCombo : ''}`;
-        if (evolved) {
-          toast(`${evolved.emoji} 进化为 ${evolved.name}！`, 3000);
-          confetti(60);
-        }
-        await showConfirm({ icon: result === 'win' ? '🏆' : '🎯', title: '关卡结束', msg: summary, yes: '返回主页', no: '再来一关', danger: false }).then(go => {
-          stage.classList.remove('show'); stage.innerHTML = '';
-          $('#home').style.display = ''; renderLevelSelect();
-          if (!go) startLevel();
+        const correct = stats.correct ?? SAVE.stats.correct;
+        const wrong = stats.wrong ?? SAVE.stats.wrong;
+        // 关卡通关 + 星评 + 奖励
+        const { stars, isClear } = recordLevelComplete(SAVE, {
+          grade: sel.grade, subject: sel.subject, lv: sel.lv, engine: sel.engine,
+          result, correct: stats.correct ?? 0, wrong: stats.wrong ?? 0,
         });
+        const rewards = computeRewards({ stars, correct: stats.correct ?? 0, wrong: stats.wrong ?? 0 });
+        SAVE.exp += rewards.exp;
+        SAVE.gold = (SAVE.gold || 0) + rewards.gold;
+        SAVE.gems = (SAVE.gems || 0) + rewards.gems;
+
+        // 进化检查
+        const evolved = evolveIfNeeded(SAVE);
+        // 成就检查
+        const newAchv = checkAchievements(SAVE);
+
+        persistSave();
+        refreshAll();
+
+        if (result === 'win' || result === 'complete') audio.sfxVictory(); else audio.sfxGameOver();
+
+        // 显示豪华关卡结束页
+        await showLevelResult({ result, stars, rewards, evolved, newAchv, stats });
+
+        stage.classList.remove('show'); stage.innerHTML = '';
+        $('#home').style.display = ''; renderLevelSelect();
       },
       requestExplain: explainQuestion,
       requestTTS: text => { speak(text, { interrupt: true }); return Promise.resolve(); },
     },
   });
-  // 提供退出按钮
+
+  // 退出按钮
   const back = document.createElement('button');
   back.className = 'btn-mini btn-stage-back';
   back.textContent = '← 退出';
   back.addEventListener('click', async () => {
+    audio.sfxClick();
     const ok = await showConfirm({ icon: '🚪', title: '退出关卡？', msg: '当前进度将丢失', yes: '退出', no: '继续' });
     if (ok) { engine.abort('aborted'); stage.classList.remove('show'); stage.innerHTML = ''; $('#home').style.display = ''; renderLevelSelect(); }
   });
   stage.appendChild(back);
 
   engine.run().catch(err => { console.error('engine error:', err); toast('引擎错误: ' + err.message); });
+}
+
+// ---------- 豪华关卡结束界面 ----------
+function showLevelResult({ result, stars, rewards, evolved, newAchv, stats }) {
+  return new Promise(resolve => {
+    const overlay = ensureOverlay('result');
+    overlay.classList.add('show');
+    const isWin = result === 'win' || result === 'complete';
+    const headEmoji = isWin ? (stars === 3 ? '🏆' : stars === 2 ? '🥇' : '✨') : '💔';
+    const headText = isWin ? (stars === 3 ? '完美通关!' : '通关成功!') : '挑战失败';
+    overlay.innerHTML = `<div class="result-panel ${isWin ? 'win' : 'lose'}">
+      <div class="result-emoji">${headEmoji}</div>
+      <div class="result-title">${headText}</div>
+      <div class="result-stars">
+        ${[1,2,3].map(i => `<span class="rstar ${i <= stars ? 'on' : ''}">★</span>`).join('')}
+      </div>
+      <div class="result-stats">答对 <b>${stats.correct ?? 0}</b> · 答错 <b>${stats.wrong ?? 0}</b>${stats.maxCombo ? ' · 最高连击 <b>' + stats.maxCombo + '</b>' : ''}</div>
+      <div class="result-rewards">
+        <div class="rrew"><span>⚡</span><b>+${rewards.exp}</b><i>经验</i></div>
+        <div class="rrew"><span>🪙</span><b>+${rewards.gold}</b><i>金币</i></div>
+        <div class="rrew"><span>💎</span><b>+${rewards.gems}</b><i>宝石</i></div>
+      </div>
+      ${evolved ? `<div class="result-evolve">🎊 宠物进化为 <b>${evolved.emoji} ${evolved.name}</b>！</div>` : ''}
+      ${newAchv.length ? `<div class="result-achv"><div class="rachv-title">🏅 新成就</div>${newAchv.map(a => `<div class="rachv">${a.icon} ${a.name}<small>${a.desc}</small></div>`).join('')}</div>` : ''}
+      <div class="result-actions">
+        <button class="btn-back">返回主页</button>
+        <button class="btn-retry">${isWin ? '再来一关' : '重新挑战'}</button>
+      </div>
+    </div>`;
+    setTimeout(() => {
+      // 星星动画依次入
+      [...overlay.querySelectorAll('.rstar.on')].forEach((el, i) => {
+        setTimeout(() => { el.classList.add('pop'); audio.sfxCoin(); }, 250 + i * 280);
+      });
+      if (evolved) setTimeout(() => audio.sfxLevelUp(), 1300);
+      if (newAchv.length) setTimeout(() => { audio.sfxAchievement(); confetti(40); }, 1700);
+      if (isWin && stars === 3) setTimeout(() => confetti(80), 1100);
+    }, 200);
+    overlay.querySelector('.btn-back').onclick = () => { audio.sfxClick(); overlay.classList.remove('show'); resolve('back'); };
+    overlay.querySelector('.btn-retry').onclick = () => { audio.sfxClick(); overlay.classList.remove('show'); resolve('retry'); setTimeout(startLevel, 200); };
+  });
 }
 
 // ---------- 错题本 ----------
@@ -243,12 +321,14 @@ async function openWrongbook() {
     <div class="wb-actions"><button class="wb-clear">🗑 清空</button><button class="wb-practice">🎯 错题练习</button></div>
   </div>`;
   overlay.classList.add('show');
-  overlay.querySelector('.wb-close').onclick = () => overlay.classList.remove('show');
+  overlay.querySelector('.wb-close').onclick = () => { audio.sfxClick(); overlay.classList.remove('show'); };
   overlay.querySelector('.wb-clear').onclick = async () => {
+    audio.sfxClick();
     const ok = await showConfirm({ icon: '🗑', title: '清空错题本？', msg: '此操作不可恢复', yes: '清空', no: '取消' });
     if (ok) { await data.wrongbookClear(SAVE.user); openWrongbook(); }
   };
   overlay.querySelector('.wb-practice').onclick = () => {
+    audio.sfxClick();
     overlay.classList.remove('show');
     sel.source = 'wrongbook-practice'; SAVE.prefs.source = 'wrongbook-practice'; persistSave();
     renderLevelSelect(); startLevel();
@@ -261,11 +341,12 @@ async function openWrongbook() {
       <div class="wb-item" data-id="${w.id}">
         <div class="wb-q">${w.q}</div>
         <div class="wb-meta">G${w.grade || '-'} · ${w.subject || '-'} · ${w.topic || '-'} · lv${w.lv || '-'}</div>
-        <div class="wb-ans">正解：${w.answer} · 我答：${w.userAnswer || '空'}</div>
+        <div class="wb-ans">正解：<b>${w.answer}</b> · 我答：${w.userAnswer || '<i>空</i>'}</div>
         <button class="wb-del" data-id="${w.id}">删除</button>
       </div>
     `).join('');
     listEl.querySelectorAll('.wb-del').forEach(b => b.addEventListener('click', async e => {
+      audio.sfxClick();
       const id = e.target.dataset.id;
       await data.wrongbookDelete(SAVE.user, id);
       e.target.closest('.wb-item').remove();
@@ -273,25 +354,51 @@ async function openWrongbook() {
   } catch (e) { overlay.querySelector('.wb-list').textContent = '加载失败: ' + e.message; }
 }
 
-// ---------- 拍照出题 ----------
+// ---------- 拍照出题（重写：丰富入口） ----------
 async function openPhotoFlow() {
   const overlay = ensureOverlay('photo');
   overlay.innerHTML = `<div class="ph-panel">
     <div class="ph-head"><h2>📷 拍照出题</h2><button class="ph-close">×</button></div>
-    <input type="file" accept="image/*" capture="environment" id="ph-input" />
-    <div class="ph-status">选择一张作业照片，AI 自动识别题目</div>
+    <div class="ph-grid">
+      <button class="ph-btn ph-cam">
+        <div class="ph-big">📷</div>
+        <div class="ph-t">拍照</div>
+        <div class="ph-d">用摄像头拍作业</div>
+      </button>
+      <button class="ph-btn ph-file">
+        <div class="ph-big">📁</div>
+        <div class="ph-t">上传图片</div>
+        <div class="ph-d">从相册选</div>
+      </button>
+    </div>
+    <div class="ph-drop" id="ph-drop">
+      <div class="ph-big">🖼️</div>
+      <div class="ph-t">把图片拖到这里</div>
+      <div class="ph-d">或按 <b>Ctrl/Cmd+V</b> 粘贴截图</div>
+    </div>
+    <input type="file" accept="image/*" capture="environment" id="ph-input-cam" style="display:none">
+    <input type="file" accept="image/*" id="ph-input-file" style="display:none">
+    <div class="ph-tip">
+      💡 提示：照片要清晰，每张作业最多识别 10 题。识别后会自动入库以供后续练习。
+    </div>
+    <button class="ph-demo">🎲 试试示例（无需 API Key）</button>
+    <div class="ph-status"></div>
     <div class="ph-result"></div>
   </div>`;
   overlay.classList.add('show');
-  overlay.querySelector('.ph-close').onclick = () => overlay.classList.remove('show');
-  $('#ph-input').onchange = async e => {
-    const file = e.target.files?.[0]; if (!file) return;
-    overlay.querySelector('.ph-status').textContent = '🤖 AI 识别中…';
+  const status = overlay.querySelector('.ph-status');
+  const result = overlay.querySelector('.ph-result');
+  const closeBtn = overlay.querySelector('.ph-close');
+  closeBtn.onclick = () => { audio.sfxClick(); overlay.classList.remove('show'); };
+
+  const handleFile = async (file) => {
+    if (!file) return;
+    audio.sfxSwoosh();
+    status.innerHTML = '🤖 AI 识别中…';
     try {
       const dataUrl = await fileToBase64(file);
       const qs = await recognizeQuestionsFromPhoto(dataUrl);
-      if (!qs.length) { overlay.querySelector('.ph-status').textContent = '未识别到题目，请重拍'; return; }
-      // 入库
+      if (!qs.length) { status.textContent = '未识别到题目，请重拍'; return; }
       let inserted = 0;
       for (const q of qs) {
         try {
@@ -304,36 +411,245 @@ async function openPhotoFlow() {
           inserted++;
         } catch (_) {}
       }
-      overlay.querySelector('.ph-status').textContent = `✅ 已识别 ${qs.length} 题，入库 ${inserted} 条`;
-      overlay.querySelector('.ph-result').innerHTML = qs.slice(0, 5).map(q => `<div class="ph-q">${q.q} → ${q.answer}</div>`).join('');
-    } catch (err) { overlay.querySelector('.ph-status').textContent = '识别失败: ' + err.message; }
+      audio.sfxCorrect();
+      status.innerHTML = `✅ 识别 <b>${qs.length}</b> 题 · 入库 <b>${inserted}</b> 条`;
+      result.innerHTML = qs.slice(0, 5).map(q => `<div class="ph-q">${q.q} → <b>${q.answer}</b></div>`).join('');
+    } catch (err) {
+      audio.sfxWrong();
+      status.textContent = '识别失败: ' + err.message;
+    }
+  };
+
+  overlay.querySelector('.ph-cam').onclick = () => { audio.sfxClick(); overlay.querySelector('#ph-input-cam').click(); };
+  overlay.querySelector('.ph-file').onclick = () => { audio.sfxClick(); overlay.querySelector('#ph-input-file').click(); };
+  overlay.querySelector('#ph-input-cam').onchange = e => handleFile(e.target.files?.[0]);
+  overlay.querySelector('#ph-input-file').onchange = e => handleFile(e.target.files?.[0]);
+
+  // 拖拽
+  const drop = overlay.querySelector('#ph-drop');
+  drop.ondragover = e => { e.preventDefault(); drop.classList.add('drag'); };
+  drop.ondragleave = () => drop.classList.remove('drag');
+  drop.ondrop = e => {
+    e.preventDefault(); drop.classList.remove('drag');
+    handleFile(e.dataTransfer.files?.[0]);
+  };
+  // 粘贴
+  const onPaste = e => {
+    if (!overlay.classList.contains('show')) return;
+    const item = [...(e.clipboardData?.items || [])].find(i => i.type.startsWith('image/'));
+    if (item) handleFile(item.getAsFile());
+  };
+  document.addEventListener('paste', onPaste);
+  closeBtn.addEventListener('click', () => document.removeEventListener('paste', onPaste));
+
+  // 示例
+  overlay.querySelector('.ph-demo').onclick = async () => {
+    audio.sfxClick();
+    status.textContent = '加载示例题…';
+    const demo = [
+      { q: '7 + 8 = ?', type: 'input', answer: '15', hints: ['两位数加法'], explain: '7+8=15', topic: '示例题', lv: 1 },
+      { q: '“春眠不觉晓”下一句是？', type: 'choice', options: ['处处闻啼鸟','花落知多少','夜来风雨声','疑是地上霜'], answer: '处处闻啼鸟', hints: ['孟浩然《春晓》'], explain: '《春晓》第二句', topic: '古诗', lv: 1 },
+      { q: 'apple 的中文意思是？', type: 'choice', options: ['苹果','香蕉','桃子','橘子'], answer: '苹果', hints: ['fruit'], explain: 'apple = 苹果', topic: '单词', lv: 1 },
+    ];
+    audio.sfxCorrect();
+    status.innerHTML = `✅ 示例已加载（${demo.length} 题）`;
+    result.innerHTML = demo.map(q => `<div class="ph-q">${q.q} → <b>${q.answer}</b></div>`).join('');
   };
 }
 
-// ---------- 设置 ----------
+// ---------- 设置（重写：丰富） ----------
+const AI_PRESETS = [
+  { key: 'openrouter', label: 'OpenRouter (全模型)', url: 'https://openrouter.ai/api/v1/chat/completions', model: 'openai/gpt-4o' },
+  { key: 'openai', label: 'OpenAI 官方', url: 'https://api.openai.com/v1/chat/completions', model: 'gpt-4o' },
+  { key: 'kimi', label: 'Kimi (Moonshot)', url: 'https://api.moonshot.cn/v1/chat/completions', model: 'moonshot-v1-8k-vision-preview' },
+  { key: 'local', label: '本机代理（默认）', url: '/v1/chat/completions', model: 'openai/gpt-4o' },
+];
+
+const TTS_VOICES = [
+  { key: 'zf_xiaoxiao', label: '小晓 (女声)' },
+  { key: 'zf_xiaoyi', label: '小怡 (女声)' },
+  { key: 'zm_yunjian', label: '云剑 (男声)' },
+  { key: 'zm_yunxia', label: '云霞 (女声)' },
+  { key: 'saturn_zh_female_keainvsheng_tob', label: '可爱女生 (火山引擎)' },
+  { key: 'zh_female_vv_uranus_bigtts', label: 'vivi (火山引擎)' },
+];
+
 function openSettings() {
   const overlay = ensureOverlay('settings');
   const cfg = loadAICfg();
   overlay.innerHTML = `<div class="st-panel">
     <div class="st-head"><h2>⚙️ 设置</h2><button class="st-close">×</button></div>
-    <label>AI URL <input id="ai_url" value="${cfg.ai_url}"></label>
-    <label>AI 模型 <input id="ai_model" value="${cfg.ai_model}"></label>
-    <label>AI Key <input id="ai_key" type="password" value="${cfg.ai_key || ''}"></label>
-    <label>TTS URL <input id="tts_url" value="${cfg.tts_url}"></label>
-    <label>TTS 音色 <input id="tts_voice" value="${cfg.tts_voice}"></label>
-    <label>TTS 语速 <input id="tts_rate" type="number" step="0.05" value="${cfg.tts_rate}"></label>
-    <button class="st-save">保存</button>
+    <div class="st-section">
+      <div class="st-stitle">AI 厂商预设</div>
+      <div class="st-presets">
+        ${AI_PRESETS.map(p => `<button class="st-preset" data-k="${p.key}">${p.label}</button>`).join('')}
+      </div>
+    </div>
+    <div class="st-section">
+      <label>AI URL <input id="ai_url" value="${cfg.ai_url}"></label>
+      <label>AI 模型 <input id="ai_model" value="${cfg.ai_model}"></label>
+      <label>AI Key <input id="ai_key" type="password" value="${cfg.ai_key || ''}" placeholder="sk-..."></label>
+      <button class="st-test-ai">🔌 测试 AI 连通</button>
+    </div>
+    <div class="st-section">
+      <label>TTS URL <input id="tts_url" value="${cfg.tts_url}"></label>
+      <label>TTS 音色
+        <select id="tts_voice">
+          ${TTS_VOICES.map(v => `<option value="${v.key}" ${cfg.tts_voice === v.key ? 'selected' : ''}>${v.label}</option>`).join('')}
+        </select>
+      </label>
+      <label>TTS 语速 <input id="tts_rate" type="number" step="0.05" min="0.5" max="2" value="${cfg.tts_rate}"></label>
+      <button class="st-test-tts">🔊 试听语音</button>
+    </div>
+    <div class="st-section">
+      <button class="st-save">💾 保存</button>
+      <button class="st-reset">⚠️ 重置所有进度</button>
+    </div>
   </div>`;
   overlay.classList.add('show');
-  overlay.querySelector('.st-close').onclick = () => overlay.classList.remove('show');
-  overlay.querySelector('.st-save').onclick = () => {
-    const c = {
-      ai_url: $('#ai_url').value, ai_model: $('#ai_model').value, ai_key: $('#ai_key').value,
-      tts_url: $('#tts_url').value, tts_voice: $('#tts_voice').value, tts_rate: parseFloat($('#tts_rate').value) || 0.95,
-    };
-    saveAICfg(c); syncTTSConfig(); clearTTSCache();
-    toast('已保存'); overlay.classList.remove('show');
+  overlay.querySelector('.st-close').onclick = () => { audio.sfxClick(); overlay.classList.remove('show'); };
+
+  // 预设按钮
+  overlay.querySelectorAll('.st-preset').forEach(b => b.onclick = () => {
+    audio.sfxClick();
+    const p = AI_PRESETS.find(x => x.key === b.dataset.k);
+    if (!p) return;
+    $('#ai_url').value = p.url;
+    $('#ai_model').value = p.model;
+    toast(`已应用预设: ${p.label}`);
+  });
+
+  // 测试 AI 连通
+  overlay.querySelector('.st-test-ai').onclick = async () => {
+    audio.sfxClick();
+    const tBtn = overlay.querySelector('.st-test-ai');
+    tBtn.textContent = '🔌 测试中…';
+    try {
+      const url = $('#ai_url').value;
+      const r = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + $('#ai_key').value },
+        body: JSON.stringify({
+          model: $('#ai_model').value,
+          messages: [{ role: 'user', content: '你好（一句话回复）' }],
+          max_tokens: 10,
+        }),
+      });
+      if (r.ok) { audio.sfxCorrect(); toast('✅ AI 连通正常'); }
+      else { audio.sfxWrong(); toast(`❌ HTTP ${r.status}`); }
+    } catch (e) {
+      audio.sfxWrong();
+      toast('❌ ' + e.message);
+    }
+    tBtn.textContent = '🔌 测试 AI 连通';
   };
+
+  // 试听 TTS
+  overlay.querySelector('.st-test-tts').onclick = async () => {
+    audio.sfxClick();
+    const c = collectCfg();
+    saveAICfg(c); syncTTSConfig(); clearTTSCache();
+    speak('你好小朋友，欢迎来到学霸奇遇记！', { interrupt: true });
+  };
+
+  function collectCfg() {
+    return {
+      ai_url: $('#ai_url').value, ai_model: $('#ai_model').value, ai_key: $('#ai_key').value,
+      tts_url: $('#tts_url').value, tts_voice: $('#tts_voice').value,
+      tts_rate: parseFloat($('#tts_rate').value) || 0.95,
+    };
+  }
+
+  // 保存
+  overlay.querySelector('.st-save').onclick = () => {
+    audio.sfxCoin();
+    saveAICfg(collectCfg()); syncTTSConfig(); clearTTSCache();
+    toast('✅ 已保存'); overlay.classList.remove('show');
+  };
+
+  // 重置
+  overlay.querySelector('.st-reset').onclick = async () => {
+    audio.sfxClick();
+    const ok = await showConfirm({ icon: '⚠️', title: '重置所有进度？', msg: '所有 EXP / 金币 / 宝石 / 成就都会清零', yes: '确定重置', no: '取消' });
+    if (ok) { localStorage.removeItem(SAVE_KEY); location.reload(); }
+  };
+}
+
+// ---------- 成就页 ----------
+function openAchievements() {
+  const overlay = ensureOverlay('achv');
+  const owned = new Set(SAVE.achievements);
+  overlay.innerHTML = `<div class="achv-panel">
+    <div class="achv-head"><h2>🏆 成就 (${owned.size}/${ACHIEVEMENTS.length})</h2><button class="achv-close">×</button></div>
+    <div class="achv-grid">
+      ${ACHIEVEMENTS.map(a => `<div class="achv-card ${owned.has(a.key) ? 'unlocked' : 'locked'}">
+        <div class="achv-ic">${owned.has(a.key) ? a.icon : '🔒'}</div>
+        <div class="achv-n">${a.name}</div>
+        <div class="achv-d">${a.desc}</div>
+      </div>`).join('')}
+    </div>
+  </div>`;
+  overlay.classList.add('show');
+  overlay.querySelector('.achv-close').onclick = () => { audio.sfxClick(); overlay.classList.remove('show'); };
+}
+
+// ---------- 每日任务 ----------
+const DAILY_TASKS = [
+  { key: 'correct_5',      label: '答对 5 题',         goal: 5,  test: (s, before) => s.stats.correct - (before.correct || 0) },
+  { key: 'clear_1',        label: '通关 1 关',         goal: 1,  test: (s, before) => s.stats.levelsCleared - (before.levelsCleared || 0) },
+  { key: 'try_engine',     label: '体验 1 种新玩法',   goal: 1,  test: () => 1 },  // 简单视为完成
+  { key: 'photo',          label: '使用拍照出题',      goal: 1,  test: () => 0 },  // 占位
+];
+
+function refreshDailyTasks() {
+  const today = new Date().toISOString().slice(0, 10);
+  if (SAVE.dailyTasks.date !== today) {
+    SAVE.dailyTasks = {
+      date: today,
+      baseStats: { correct: SAVE.stats.correct, levelsCleared: SAVE.stats.levelsCleared },
+      tasks: {}, claimed: [],
+    };
+    persistSave();
+  }
+}
+
+function openDaily() {
+  refreshDailyTasks();
+  const overlay = ensureOverlay('daily');
+  const before = SAVE.dailyTasks.baseStats || { correct: 0, levelsCleared: 0 };
+  overlay.innerHTML = `<div class="daily-panel">
+    <div class="daily-head"><h2>📋 每日任务</h2><button class="daily-close">×</button></div>
+    <div class="daily-streak">🔥 连续登录 <b>${SAVE.streak || 0}</b> 天</div>
+    <div class="daily-list">
+      ${DAILY_TASKS.map(t => {
+        const progress = Math.min(t.goal, t.test(SAVE, before));
+        const done = progress >= t.goal;
+        const claimed = SAVE.dailyTasks.claimed.includes(t.key);
+        return `<div class="daily-item ${done ? 'done' : ''}">
+          <div class="daily-info">
+            <div class="daily-l">${t.label}</div>
+            <div class="daily-bar"><span style="width:${progress / t.goal * 100}%"></span></div>
+            <div class="daily-p">${progress}/${t.goal}</div>
+          </div>
+          <button class="daily-claim" data-k="${t.key}" ${(!done || claimed) ? 'disabled' : ''}>
+            ${claimed ? '✓ 已领' : done ? '🎁 领取' : '进行中'}
+          </button>
+        </div>`;
+      }).join('')}
+    </div>
+    <div class="daily-tip">完成所有任务可获得额外金币奖励！</div>
+  </div>`;
+  overlay.classList.add('show');
+  overlay.querySelector('.daily-close').onclick = () => { audio.sfxClick(); overlay.classList.remove('show'); };
+  overlay.querySelectorAll('.daily-claim').forEach(b => b.onclick = () => {
+    if (b.disabled) return;
+    audio.sfxCoin();
+    SAVE.gold = (SAVE.gold || 0) + 10;
+    SAVE.dailyTasks.claimed.push(b.dataset.k);
+    persistSave(); refreshAll();
+    openDaily();  // 重渲染
+    toast('🪙 +10 金币');
+  });
 }
 
 function ensureOverlay(name) {
@@ -349,20 +665,29 @@ function ensureOverlay(name) {
 
 // ---------- 启动 ----------
 async function boot() {
-  renderTopbar();
-  renderPet($('#pet-area'), SAVE);
+  // 每日登录奖励
+  const dailyReward = awardDaily(SAVE);
+  if (dailyReward) {
+    persistSave();
+    setTimeout(() => {
+      audio.sfxCoin();
+      toast(`🎁 每日登录 +${dailyReward.gold} 金币 · 连续 ${dailyReward.streak} 天 🔥`, 3000);
+    }, 800);
+  }
+  refreshAll();
   if (!$('#stage')) {
     const s = document.createElement('div'); s.id = 'stage'; s.className = 'stage';
     document.body.appendChild(s);
   }
-  // 先渲染（用 cached/无可用性的版本），再异步刷新
   renderLevelSelect();
+  // 检查启动时成就
+  const newly = checkAchievements(SAVE);
+  if (newly.length) { persistSave(); refreshAll(); }
+
   try {
     AVAILABILITY = await data.fetchAvailability();
-    renderLevelSelect();  // 重渲染应用 disabled 状态
-  } catch (e) {
-    console.warn('[boot] availability 加载失败:', e.message);
-  }
+    renderLevelSelect();
+  } catch (e) { console.warn('[boot] availability 加载失败:', e.message); }
 }
 
 document.addEventListener('DOMContentLoaded', boot);

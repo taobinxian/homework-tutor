@@ -9,7 +9,7 @@ const AI_DEFAULTS = {
   ai_model: 'openai/gpt-4o',
   ai_key: '',
   tts_url: '/tts',
-  tts_voice: 'saturn_zh_female_keainvsheng_tob',
+  tts_voice: 'zf_xiaoxiao',  // 本地 kokoro 默认音色（女声·小晓）
   tts_rate: 0.95,
 };
 

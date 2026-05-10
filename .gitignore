@@ -3,3 +3,12 @@ node_modules/
 *.db-*
 package-lock.json
 .playwright-mcp/
+
+# Local Claude Code settings (may contain credentials)
+.claude/
+
+# TTS / ASR models — too large for git, download via scripts/download-models.sh
+models/
+
+# Coverage baseline (regenerated locally)
+.coverage-baseline.json

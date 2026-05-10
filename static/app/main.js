@@ -10,6 +10,10 @@ import {
 } from './state.js';
 import { ACHIEVEMENTS, checkAchievements, totalAchievements } from './achievements.js';
 import * as audio from './audio.js';
+import {
+  ITEMS, findItem, canAfford, buyItem, toggleActive,
+  consumeActiveAtLevelStart, applyEndOfLevelEffects,
+} from './items.js';
 
 import { BattleEngine } from './engines/battle.js';
 import { ShootingEngine } from './engines/shooting.js';
@@ -45,6 +49,7 @@ function renderTopbar() {
       <button id="btn-voice" class="btn-mini" title="${isEnabled() ? '语音开' : '语音关'}">${isEnabled() ? '🔊' : '🔇'}</button>
       <button id="btn-mute" class="btn-mini" title="${audio.isMuted() ? '音效关' : '音效开'}">${audio.isMuted() ? '🔕' : '🎵'}</button>
       <button id="btn-daily" class="btn-mini" title="每日任务">📋</button>
+      <button id="btn-shop" class="btn-mini" title="商店">🛒</button>
       <button id="btn-achv" class="btn-mini" title="成就">🏆 ${SAVE.achievements.length}/${totalAchievements()}</button>
       <button id="btn-photo" class="btn-mini">📷</button>
       <button id="btn-wrongbook" class="btn-mini">📚</button>
@@ -63,6 +68,7 @@ function renderTopbar() {
     refreshAll();
   });
   $('#btn-daily').addEventListener('click', () => { audio.sfxClick(); openDaily(); });
+  $('#btn-shop').addEventListener('click', () => { audio.sfxClick(); openShop(); });
   $('#btn-achv').addEventListener('click', () => { audio.sfxClick(); openAchievements(); });
   $('#btn-photo').addEventListener('click', () => { audio.sfxClick(); openPhotoFlow(); });
   $('#btn-wrongbook').addEventListener('click', () => { audio.sfxClick(); openWrongbook(); });
@@ -141,6 +147,7 @@ function renderLevelSelect() {
     <div class="ls-row"><span>来源</span>${SOURCES.map(s => btn('src', s.key, s.label, sel.source === s.key, false)).join('')}</div>
     <div class="ls-row"><span>题数</span>${[5,10,15].map(c => btn('cnt', c, c + '题', sel.count === c, false)).join('')}</div>
     <div class="ls-prog">本关最佳: <b>${starsHtml}</b>${cleared ? ` · 通过 ${cleared.times} 次` : ' · 未通关'}</div>
+    ${renderItemSlots()}
     <button id="btn-start" class="btn-start">🚀 开始闯关</button>
   `;
   home.querySelectorAll('.ls-btn').forEach(b => {
@@ -159,12 +166,130 @@ function renderLevelSelect() {
     });
   });
   $('#btn-start').addEventListener('click', () => { audio.sfxLevelUp(); startLevel(); });
+
+  // 道具槽位点击：移除已激活
+  home.querySelectorAll('.it-slot').forEach(s => s.addEventListener('click', () => {
+    const k = s.dataset.k; if (!k) return;
+    audio.sfxClick();
+    toggleActive(SAVE, k); persistSave();
+    renderLevelSelect();
+  }));
+  // 「+」槽位点击：弹出库存选择
+  const addSlot = home.querySelector('.it-slot.add');
+  if (addSlot) addSlot.addEventListener('click', () => { audio.sfxClick(); openInventoryPicker(); });
+  // 商店入口
+  const shopLink = home.querySelector('.it-shop-link');
+  if (shopLink) shopLink.addEventListener('click', () => { audio.sfxClick(); openShop(); });
+
   function btn(kind, val, label, active, disabled) {
     const cls = ['ls-btn'];
     if (active) cls.push('active');
     if (disabled) cls.push('disabled');
     return `<button class="${cls.join(' ')}" data-kind="${kind}" data-val="${val}">${label}</button>`;
   }
+}
+
+// 道具槽 — 3 槽位，已激活的显示道具图标，空槽显示 "+"
+function renderItemSlots() {
+  const active = SAVE.activeItems || [];
+  const slots = [];
+  for (let i = 0; i < 3; i++) {
+    if (i < active.length) {
+      const it = findItem(active[i]);
+      if (!it) continue;
+      slots.push(`<button class="it-slot active" data-k="${it.key}" title="${it.desc}（点击移除）">
+        <span class="it-ic">${it.icon}</span><span class="it-n">${it.name}</span>
+      </button>`);
+    } else {
+      slots.push(`<button class="it-slot add" title="装备道具">+</button>`);
+    }
+  }
+  const totalItems = Object.values(SAVE.inventory || {}).reduce((a, b) => a + b, 0);
+  return `<div class="ls-row it-row">
+    <span>道具</span>
+    ${slots.join('')}
+    <span class="it-shop-link">🛒 商店${totalItems ? `（背包 ${totalItems}）` : ''}</span>
+  </div>`;
+}
+
+// 库存选择弹窗（点 + 槽时）
+function openInventoryPicker() {
+  const overlay = ensureOverlay('invpicker');
+  const inv = SAVE.inventory || {};
+  const owned = Object.entries(inv).filter(([_, n]) => n > 0);
+  const html = owned.length
+    ? owned.map(([k, n]) => {
+        const it = findItem(k); if (!it) return '';
+        const equipped = (SAVE.activeItems || []).includes(k);
+        return `<button class="inv-card${equipped ? ' equipped' : ''}" data-k="${k}">
+          <div class="inv-ic">${it.icon}</div>
+          <div class="inv-n">${it.name} ×${n}</div>
+          <div class="inv-d">${it.desc}</div>
+          ${equipped ? '<div class="inv-eq">已装备</div>' : ''}
+        </button>`;
+      }).join('')
+    : '<div class="inv-empty">背包空空 · 去 🛒 商店采购吧</div>';
+  overlay.innerHTML = `<div class="inv-panel">
+    <div class="inv-head"><h2>🎒 选择道具</h2><button class="inv-close">×</button></div>
+    <div class="inv-tip">最多激活 3 个；关卡开始时消耗。当前已激活 ${(SAVE.activeItems || []).length}/3</div>
+    <div class="inv-grid">${html}</div>
+    <button class="inv-shop-btn">🛒 去商店</button>
+  </div>`;
+  overlay.classList.add('show');
+  overlay.querySelector('.inv-close').onclick = () => { audio.sfxClick(); overlay.classList.remove('show'); renderLevelSelect(); };
+  overlay.querySelector('.inv-shop-btn').onclick = () => { audio.sfxClick(); overlay.classList.remove('show'); openShop(); };
+  overlay.querySelectorAll('.inv-card').forEach(b => b.onclick = () => {
+    audio.sfxClick();
+    const r = toggleActive(SAVE, b.dataset.k);
+    if (r.reason === 'full') toast('道具槽已满（最多 3 个）');
+    else if (r.reason === 'no_stock') toast('已无库存');
+    else { persistSave(); openInventoryPicker(); }
+  });
+}
+
+// ---------- 商店 ----------
+function openShop() {
+  const overlay = ensureOverlay('shop');
+  overlay.innerHTML = `<div class="shop-panel">
+    <div class="shop-head">
+      <h2>🛒 魔法商店</h2>
+      <span class="shop-bal">🪙 ${SAVE.gold || 0} · 💎 ${SAVE.gems || 0}</span>
+      <button class="shop-close">×</button>
+    </div>
+    <div class="shop-tip">道具会加到背包；选关时点 + 槽位激活，关卡开始即生效。</div>
+    <div class="shop-grid">
+      ${ITEMS.map(it => {
+        const owned = SAVE.inventory?.[it.key] || 0;
+        const ok = canAfford(SAVE, it);
+        const priceStr = it.cost.gold ? `🪙 ${it.cost.gold}` : `💎 ${it.cost.gems}`;
+        return `<div class="shop-card ${ok ? '' : 'disabled'}" data-k="${it.key}">
+          <div class="shop-ic">${it.icon}</div>
+          <div class="shop-n">${it.name}</div>
+          <div class="shop-d">${it.desc}</div>
+          <div class="shop-foot">
+            <span class="shop-p">${priceStr}</span>
+            ${owned ? `<span class="shop-own">已有 ×${owned}</span>` : ''}
+            <button class="shop-buy" data-k="${it.key}" ${ok ? '' : 'disabled'}>${ok ? '购买' : '不够'}</button>
+          </div>
+        </div>`;
+      }).join('')}
+    </div>
+  </div>`;
+  overlay.classList.add('show');
+  overlay.querySelector('.shop-close').onclick = () => { audio.sfxClick(); overlay.classList.remove('show'); renderLevelSelect(); };
+  overlay.querySelectorAll('.shop-buy').forEach(b => b.onclick = e => {
+    e.stopPropagation();
+    if (b.disabled) return;
+    const k = b.dataset.k;
+    const it = findItem(k);
+    if (!it) return;
+    const r = buyItem(SAVE, k);
+    if (!r.ok) { audio.sfxWrong(); toast('购买失败：' + (r.reason === 'insufficient' ? '货币不足' : r.reason)); return; }
+    audio.sfxCoin();
+    persistSave(); refreshAll();
+    toast(`✅ 已购买 ${it.icon} ${it.name}`, 1400);
+    openShop();  // 重渲染余额
+  });
 }
 
 // ---------- 启动关卡 ----------
@@ -193,6 +318,15 @@ async function startLevel() {
   preloadBattle(questions);
   SAVE._lastSource = sel.source;  // 给成就检查用
 
+  // 关卡开始：消耗激活道具
+  const itemRun = consumeActiveAtLevelStart(SAVE);
+  persistSave();
+  if (itemRun.used.length) {
+    toast(`🎒 已使用：${itemRun.used.map(i => i.icon + i.name).join('、')}`, 2200);
+    audio.sfxLevelUp();
+  }
+  const E = itemRun.effects;  // 道具合并后的效果
+
   const stage = $('#stage');
   stage.classList.add('show');
   $('#home').style.display = 'none';
@@ -204,6 +338,7 @@ async function startLevel() {
   const engine = new EngineClass({
     container: stage,
     questions,
+    config: { itemEffects: E },
     callbacks: {
       onCorrect: q => {
         recordCorrect(SAVE, { exp: 5 });
@@ -224,21 +359,25 @@ async function startLevel() {
       },
       onComplete: async ({ result, stats }) => {
         await new Promise(r => setTimeout(r, 600));
-        const correct = stats.correct ?? SAVE.stats.correct;
-        const wrong = stats.wrong ?? SAVE.stats.wrong;
-        // 关卡通关 + 星评 + 奖励
-        const { stars, isClear } = recordLevelComplete(SAVE, {
+        // 关卡通关 + 星评（forceThreeStar 道具：通关时无脑给三星）
+        let { stars, isClear } = recordLevelComplete(SAVE, {
           grade: sel.grade, subject: sel.subject, lv: sel.lv, engine: sel.engine,
           result, correct: stats.correct ?? 0, wrong: stats.wrong ?? 0,
         });
-        const rewards = computeRewards({ stars, correct: stats.correct ?? 0, wrong: stats.wrong ?? 0 });
+        if (E.forceThreeStar && (result === 'win' || result === 'complete') && stars < 3) {
+          stars = 3;
+          // 同步到 clearedLevels.bestStars
+          const k = `g${sel.grade}.${sel.subject}.lv${sel.lv}`;
+          if (SAVE.clearedLevels[k]) SAVE.clearedLevels[k].bestStars = 3;
+        }
+        // 基础奖励 → 道具倍率/宝箱
+        const baseRewards = computeRewards({ stars, correct: stats.correct ?? 0, wrong: stats.wrong ?? 0 });
+        const rewards = applyEndOfLevelEffects(SAVE, E, baseRewards, stars);
         SAVE.exp += rewards.exp;
         SAVE.gold = (SAVE.gold || 0) + rewards.gold;
         SAVE.gems = (SAVE.gems || 0) + rewards.gems;
 
-        // 进化检查
         const evolved = evolveIfNeeded(SAVE);
-        // 成就检查
         const newAchv = checkAchievements(SAVE);
 
         persistSave();
@@ -246,8 +385,7 @@ async function startLevel() {
 
         if (result === 'win' || result === 'complete') audio.sfxVictory(); else audio.sfxGameOver();
 
-        // 显示豪华关卡结束页
-        await showLevelResult({ result, stars, rewards, evolved, newAchv, stats });
+        await showLevelResult({ result, stars, rewards, evolved, newAchv, stats, itemsUsed: itemRun.used });
 
         stage.classList.remove('show'); stage.innerHTML = '';
         $('#home').style.display = ''; renderLevelSelect();
@@ -272,7 +410,7 @@ async function startLevel() {
 }
 
 // ---------- 豪华关卡结束界面 ----------
-function showLevelResult({ result, stars, rewards, evolved, newAchv, stats }) {
+function showLevelResult({ result, stars, rewards, evolved, newAchv, stats, itemsUsed = [] }) {
   return new Promise(resolve => {
     const overlay = ensureOverlay('result');
     overlay.classList.add('show');
@@ -291,6 +429,8 @@ function showLevelResult({ result, stars, rewards, evolved, newAchv, stats }) {
         <div class="rrew"><span>🪙</span><b>+${rewards.gold}</b><i>金币</i></div>
         <div class="rrew"><span>💎</span><b>+${rewards.gems}</b><i>宝石</i></div>
       </div>
+      ${rewards.bonusGold ? `<div class="result-evolve">🎁 幸运宝箱开出 <b>${rewards.bonusGold}</b> 金币！</div>` : ''}
+      ${itemsUsed.length ? `<div class="result-items">本关消耗：${itemsUsed.map(i => i.icon + i.name).join(' · ')}</div>` : ''}
       ${evolved ? `<div class="result-evolve">🎊 宠物进化为 <b>${evolved.emoji} ${evolved.name}</b>！</div>` : ''}
       ${newAchv.length ? `<div class="result-achv"><div class="rachv-title">🏅 新成就</div>${newAchv.map(a => `<div class="rachv">${a.icon} ${a.name}<small>${a.desc}</small></div>`).join('')}</div>` : ''}
       <div class="result-actions">

@@ -37,6 +37,7 @@ export class ShootingEngine extends LevelEngine {
     this.monsters = []; // {el, distance: 0..5}
     this._timer = null;
     this._timeLeft = 0;
+    this.E = opts.config?.itemEffects || {};
   }
 
   async start() {
@@ -155,9 +156,9 @@ export class ShootingEngine extends LevelEngine {
         this._targetsEl.appendChild(btn);
       });
 
-      // 倒计时
+      // 倒计时（道具：时间沙漏 +5s/题）
       const lv = q.lv || 1;
-      this._timeLeft = LV_TIMES[lv] || 10;
+      this._timeLeft = (LV_TIMES[lv] || 10) + (this.E.extraTime || 0);
       this._timeN.textContent = this._timeLeft;
       this._timer = setInterval(() => {
         this._timeLeft--;

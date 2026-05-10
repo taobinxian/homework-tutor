@@ -24,6 +24,8 @@ export function createInitialState() {
     lastLogin: todayStr(),
     streak: 0,
     prefs: { engine: 'battle', source: 'mixed', muted: false },
+    inventory: {},      // 已购买道具 { itemKey: count }
+    activeItems: [],    // 关前激活的道具列表（最多 3 个，关卡开始消耗）
   };
 }
 
@@ -36,6 +38,8 @@ export function migrateState(raw) {
   merged.dailyTasks = { ...fresh.dailyTasks, ...(raw?.dailyTasks || {}) };
   merged.clearedLevels = raw?.clearedLevels || {};
   merged.achievements = Array.isArray(raw?.achievements) ? raw.achievements : [];
+  merged.inventory = (raw?.inventory && typeof raw.inventory === 'object') ? raw.inventory : {};
+  merged.activeItems = Array.isArray(raw?.activeItems) ? raw.activeItems : [];
   // 清理旧版残留 pet:{name:'蛋蛋',face:'🥚',xp:0} —— 与 petByExp 计算冲突
   delete merged.pet;
   // 兼容 gold/gems：旧版可能用 stars 命名

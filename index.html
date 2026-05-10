@@ -385,6 +385,55 @@ body{
 .st-test-ai:hover,.st-test-tts:hover{background:var(--c-accent);color:#000}
 .st-reset{background:var(--c-bad);color:#fff;border:0;padding:8px 14px;border-radius:10px;cursor:pointer;font-size:13px;margin-left:8px}
 
+/* ============== 道具槽（关卡选择页） ============== */
+.it-row{flex-wrap:wrap}
+.it-row .it-slot{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:12px;border:1px dashed #3a4090;background:#1a204c;color:#fff;cursor:pointer;font-size:13px;transition:all .15s}
+.it-row .it-slot.add{color:#7a82c8;font-size:18px;padding:6px 14px;font-weight:bold}
+.it-row .it-slot.add:hover{border-color:var(--c-accent);color:var(--c-accent);background:#252b6e}
+.it-row .it-slot.active{border-style:solid;border-color:var(--c-accent);background:linear-gradient(90deg,rgba(255,207,75,.18),rgba(255,122,195,.12));color:var(--c-accent)}
+.it-row .it-slot.active:hover{filter:brightness(1.2)}
+.it-row .it-slot .it-ic{font-size:16px}
+.it-row .it-shop-link{color:var(--c-accent);font-size:12px;cursor:pointer;text-decoration:underline;margin-left:auto}
+
+/* ============== 库存选择弹窗 ============== */
+.inv-panel{background:var(--c-panel-solid);border-radius:18px;padding:20px;max-width:560px;width:100%;color:#fff;max-height:82vh;overflow:auto}
+.inv-head{display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #3a4090;padding-bottom:10px;margin-bottom:14px}
+.inv-close{background:transparent;border:0;color:#fff;font-size:24px;cursor:pointer}
+.inv-tip{font-size:12px;color:var(--c-muted);margin-bottom:12px}
+.inv-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.inv-card{padding:12px 8px;background:#1a204c;border:1px solid #2a306f;border-radius:14px;color:#fff;cursor:pointer;transition:all .2s;text-align:center;position:relative}
+.inv-card.equipped{border-color:var(--c-accent);background:linear-gradient(160deg,rgba(255,207,75,.18),rgba(255,122,195,.12))}
+.inv-card:hover{transform:translateY(-2px);box-shadow:0 6px 18px rgba(0,0,0,.4)}
+.inv-ic{font-size:32px;margin-bottom:4px}
+.inv-n{font-size:13px;font-weight:bold;color:var(--c-accent);margin-bottom:2px}
+.inv-d{font-size:11px;color:var(--c-muted);line-height:1.4}
+.inv-eq{position:absolute;top:6px;right:6px;font-size:10px;background:var(--c-accent);color:#000;padding:2px 6px;border-radius:8px;font-weight:bold}
+.inv-empty{padding:30px;text-align:center;color:var(--c-muted);font-size:14px}
+.inv-shop-btn{display:block;width:100%;margin-top:14px;padding:10px;background:linear-gradient(90deg,var(--c-accent),var(--c-accent2));color:#000;border:0;border-radius:12px;cursor:pointer;font-weight:bold;font-size:14px}
+
+/* ============== 商店 ============== */
+.shop-panel{background:var(--c-panel-solid);border-radius:18px;padding:20px;max-width:760px;width:100%;color:#fff;max-height:85vh;overflow:auto}
+.shop-head{display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #3a4090;padding-bottom:10px;margin-bottom:14px;gap:12px;flex-wrap:wrap}
+.shop-head h2{margin:0}
+.shop-bal{font-size:13px;background:rgba(0,0,0,.3);padding:6px 12px;border-radius:12px;color:var(--c-accent);font-weight:bold}
+.shop-close{background:transparent;border:0;color:#fff;font-size:24px;cursor:pointer}
+.shop-tip{font-size:12px;color:var(--c-muted);margin-bottom:14px;background:rgba(0,0,0,.2);padding:10px;border-radius:10px}
+.shop-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px}
+.shop-card{padding:14px;background:linear-gradient(160deg,#1a204c,#2a306f);border:1px solid #3a4090;border-radius:14px;display:flex;flex-direction:column;gap:6px;transition:all .2s}
+.shop-card:hover{transform:translateY(-2px);box-shadow:0 8px 22px rgba(0,0,0,.4);border-color:var(--c-accent)}
+.shop-card.disabled{opacity:.55}
+.shop-ic{font-size:36px;text-align:center}
+.shop-n{font-size:14px;font-weight:bold;color:var(--c-accent);text-align:center}
+.shop-d{font-size:11px;color:var(--c-muted);line-height:1.4;min-height:30px;text-align:center}
+.shop-foot{display:flex;align-items:center;gap:6px;margin-top:6px;flex-wrap:wrap;justify-content:space-between}
+.shop-p{font-size:12px;background:rgba(0,0,0,.4);padding:4px 8px;border-radius:8px;color:var(--c-accent);font-weight:bold}
+.shop-own{font-size:10px;color:var(--c-good);background:rgba(108,240,161,.15);padding:2px 6px;border-radius:6px}
+.shop-buy{padding:6px 12px;border:0;border-radius:10px;cursor:pointer;font-weight:bold;font-size:12px;background:linear-gradient(90deg,var(--c-accent),var(--c-accent2));color:#000;flex:0 0 auto}
+.shop-buy:disabled{background:#3a4090;color:#7a82c8;cursor:not-allowed}
+
+/* 关卡结果页 — 道具消耗提示 */
+.result-items{margin:8px 0;padding:8px 12px;background:rgba(255,207,75,.08);border-radius:10px;font-size:12px;color:var(--c-muted)}
+
 </style>
 </head>
 <body>

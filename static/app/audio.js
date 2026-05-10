@@ -34,6 +34,8 @@ function unlockAudio() {
   if (!ctx) makeCtx();
   if (!ctx) return;
   ctx.resume().catch(() => {});
+
+  // ① 静音 buffer：iOS 必须播至少一次 buffer source 才会真正激活音频管线
   try {
     const buf = ctx.createBuffer(1, 1, 22050);
     const src = ctx.createBufferSource();
@@ -41,13 +43,32 @@ function unlockAudio() {
     src.connect(ctx.destination);
     src.start(0);
   } catch (_) {}
-  // 解锁 HTML5 Audio（TTS 用 new Audio()）
+
+  // ② 真实可听 oscillator（极短极轻）— iOS Safari 在某些版本要求 oscillator
+  //    实际响过一次才把 audio output 完全激活；不然后续所有 tone 都不响。
+  //    控制在 ~50ms / 0.04 vol，几乎无感但能解锁。
+  try {
+    const osc = ctx.createOscillator();
+    const g = ctx.createGain();
+    osc.frequency.value = 440;
+    osc.type = 'sine';
+    g.gain.setValueAtTime(0, ctx.currentTime);
+    g.gain.linearRampToValueAtTime(0.04, ctx.currentTime + 0.005);
+    g.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.05);
+    osc.connect(g).connect(masterGain || ctx.destination);
+    osc.start();
+    osc.stop(ctx.currentTime + 0.06);
+  } catch (_) {}
+
+  // ③ 解锁 HTML5 Audio（TTS 用 new Audio()）— 必须在 gesture 内 play
   try {
     const a = new Audio();
     a.muted = true;
+    a.playsInline = true;
     a.play().catch(() => {});
     setTimeout(() => { try { a.pause(); } catch (_) {} }, 60);
   } catch (_) {}
+
   unlocked = true;
 }
 

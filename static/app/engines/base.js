@@ -69,23 +69,34 @@ export class LevelEngine {
       } else {
         this.stats.wrong++;
         this.callbacks.onWrong?.(q, userAnswer);
+        // 错题入库 fire-and-forget — 即使网络挂起也不阻塞下一题流程
         if (this.callbacks.onWrongAdd) {
-          try { await this.callbacks.onWrongAdd(q, userAnswer); } catch (_) {}
+          Promise.resolve()
+            .then(() => this.callbacks.onWrongAdd(q, userAnswer))
+            .catch(err => console.warn('[engine] onWrongAdd 失败:', err));
         }
       }
       await this.onAnswer(q, userAnswer, correct);
       if (this.stats.ended) break;
       this.idx++;
     }
-    if (!this.stats.ended) {
+    // 无论是循环正常结束还是引擎中途置 stats.ended=true（HP 归零 / Boss 击败 / 防线失守），
+    // 都必须走 finish() + onComplete()，否则关卡会卡死在原地
+    if (!this._completed) {
+      this._completed = true;
       this.stats.ended = true;
       const result = await this.finish();
-      this.callbacks.onComplete?.({ result: result?.result || 'complete', stats: { ...this.stats, ...(result?.stats || {}) } });
+      this.callbacks.onComplete?.({
+        result: result?.result || 'complete',
+        stats: { ...this.stats, ...(result?.stats || {}) },
+      });
     }
   }
 
   // 终止关卡（外部调用，如用户点退出）
   abort(reason = 'aborted') {
+    if (this._completed) return;
+    this._completed = true;
     this.stats.ended = true;
     this.callbacks.onComplete?.({ result: reason, stats: { ...this.stats } });
     this.destroy();

@@ -2,12 +2,21 @@
 // 其他模块禁止直接 fetch /api/*
 
 const BASE = '';  // 同源部署
+const DEFAULT_TIMEOUT_MS = 10000;  // 任何 API 默认 10s 超时；防止移动端弱网下 fetch 永不返回
+
+// 带 timeout 的 fetch — fetch 本身没有内置超时，必须手动 AbortController
+function fetchWithTimeout(url, opts = {}, timeoutMs = DEFAULT_TIMEOUT_MS) {
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), timeoutMs);
+  return fetch(url, { ...opts, signal: opts.signal || ctrl.signal })
+    .finally(() => clearTimeout(t));
+}
 
 async function jsonRequest(url, opts = {}) {
-  const res = await fetch(url, {
+  const res = await fetchWithTimeout(url, {
     ...opts,
     headers: { 'Content-Type': 'application/json', ...(opts.headers || {}) },
-  });
+  }, opts.timeoutMs || DEFAULT_TIMEOUT_MS);
   if (!res.ok) {
     let msg = `HTTP ${res.status}`;
     try {
@@ -31,7 +40,7 @@ export async function fetchPick(opts) {
     else params.set(k, String(v));
   }
   // 直接 fetch 以读取 X-Pick-Fallback header
-  const res = await fetch(`${BASE}/api/questions/pick?${params}`);
+  const res = await fetchWithTimeout(`${BASE}/api/questions/pick?${params}`);
   if (!res.ok) {
     let msg = `HTTP ${res.status}`;
     try { const b = await res.json(); if (b?.error) msg = b.error; } catch (_) {}

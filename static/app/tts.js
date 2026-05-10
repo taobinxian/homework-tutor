@@ -177,10 +177,16 @@ async function _playOne(t, opts, onDone) {
   }
   if (url) {
     const audio = new Audio(url);
+    audio.playsInline = true;          // iOS：禁止全屏播放器，行内播放
+    audio.preload = 'auto';
     _state.current = audio;
     audio.onended = () => { _state.current = null; onDone?.(); };
     audio.onerror = () => { _state.current = null; onDone?.(); };
-    audio.play().catch(() => { _state.current = null; onDone?.(); });
+    audio.play().catch(err => {
+      console.warn('[tts] audio.play 失败:', err?.message || err);
+      _state.current = null;
+      onDone?.();
+    });
     return;
   }
   // 浏览器兜底

@@ -2,9 +2,16 @@
   "name": "homework-tutor",
   "version": "1.0.0",
   "description": "基于 AI + 游戏化的小学作业辅导工具，支持 1-6 年级数学/语文/英语/科学（3年级起）四个学科。",
-  "main": "grade1.js",
+  "main": "proxy.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node proxy.js",
+    "test": "node --test 'test/*.test.js'",
+    "db:migrate": "node scripts/db-migrate.js",
+    "db:seed": "npm run db:seed:curriculum && npm run db:seed:legacy && npm run db:seed:generators",
+    "db:seed:curriculum": "node scripts/db-seed-curriculum.js",
+    "db:seed:legacy": "node scripts/db-seed-legacy.js",
+    "db:seed:generators": "node scripts/db-seed-generators.js",
+    "coverage": "node scripts/coverage.js",
     "validate:bank": "node scripts/validate-question-bank.js"
   },
   "keywords": [],
@@ -12,6 +19,7 @@
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
-    "better-sqlite3": "^12.9.0"
+    "better-sqlite3": "^12.9.0",
+    "sherpa-onnx": "^1.12.37"
   }
 }

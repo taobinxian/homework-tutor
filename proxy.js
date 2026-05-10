@@ -36,43 +36,18 @@ const { URL } = require('url');
 // ---------- 错题库 SQLite ----------
 let db;
 try {
-  const Database = require('better-sqlite3');
-  const dbPath = path.join(__dirname, 'wrongbook.db');
-  db = new Database(dbPath);
-  db.pragma('journal_mode = WAL');
-  db.exec(`CREATE TABLE IF NOT EXISTS wrong_questions (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    user TEXT NOT NULL DEFAULT 'default',
-    q TEXT NOT NULL,
-    type TEXT,
-    options TEXT,
-    answer TEXT,
-    user_answer TEXT,
-    hints TEXT,
-    explain_text TEXT,
-    topic TEXT,
-    source TEXT,
-    needs_image INTEGER DEFAULT 0,
-    image_desc TEXT,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-  )`);
-  const existingColumns=db.prepare('PRAGMA table_info(wrong_questions)').all().map(column=>column.name);
-  const ensureColumn=(name,definition)=>{
-    if(!existingColumns.includes(name)){
-      db.exec(`ALTER TABLE wrong_questions ADD COLUMN ${name} ${definition}`);
-      existingColumns.push(name);
-    }
-  };
-  ensureColumn('grade','INTEGER');
-  ensureColumn('subject','TEXT');
-  ensureColumn('semester','TEXT');
-  ensureColumn('knowledge_points','TEXT');
-  db.exec(`CREATE INDEX IF NOT EXISTS idx_wrong_user ON wrong_questions(user)`);
+  const { openDb, initSchema, DEFAULT_DB_FILE } = require('./lib/db');
+  const dbPath = process.env.HOMEWORK_DB || DEFAULT_DB_FILE;
+  db = openDb(dbPath);
+  initSchema(db);
   console.log('  错题库: ✅ SQLite 已就绪 · ' + dbPath);
 } catch(e) {
   console.log('  错题库: ⚠️ SQLite 不可用，使用客户端本地存储 (' + e.message + ')');
   db = null;
 }
+const wrongbookApi = require('./lib/wrongbook-api');
+const questionsApi  = require('./lib/questions-api');
+const localTts      = require('./lib/local-tts');
 
 const PORT            = parseInt(process.env.PORT || '8787', 10);
 const BIND            = process.env.BIND            || '0.0.0.0';
@@ -167,10 +142,6 @@ function proxyChat(req,res){
 
 // ---------- /tts 火山引擎 豆包语音合成 2.0 (Seed-TTS 2.0)  /api/v3/tts/unidirectional/sse ----------
 function handleTTS(req,res){
-  if(!VOLC_APPID||!VOLC_TOKEN){
-    res.writeHead(500,{...CORS,'Content-Type':'application/json; charset=utf-8'});
-    return res.end(JSON.stringify({error:'未配置火山引擎。请在启动时设置 VOLC_APPID 和 VOLC_TOKEN 环境变量。'}));
-  }
   const parseReq=()=>{
     if(req.method==='GET'){
       const u=new URL(req.url,'http://x');
@@ -195,6 +166,28 @@ function handleTTS(req,res){
     if(!p.text){
       res.writeHead(400,{...CORS,'Content-Type':'application/json; charset=utf-8'});
       return res.end(JSON.stringify({error:'text 参数为空'}));
+    }
+
+    if(process.env.LOCAL_TTS !== '0'){
+      try {
+        const audio = localTts.synthesize(p.text, { voice: p.voice, rate: p.rate });
+        res.writeHead(200, {
+          ...CORS,
+          'Content-Type': audio.mime,
+          'Content-Length': audio.buffer.length,
+          'Cache-Control': 'no-cache',
+          'X-TTS-Engine': 'local-kokoro',
+          'X-TTS-Speaker-Id': String(audio.speakerId),
+        });
+        return res.end(audio.buffer);
+      } catch(e) {
+        console.warn('  TTS  : 本地模型不可用，尝试云端/兜底 · ' + e.message);
+      }
+    }
+
+    if(!VOLC_APPID||!VOLC_TOKEN){
+      res.writeHead(500,{...CORS,'Content-Type':'application/json; charset=utf-8'});
+      return res.end(JSON.stringify({error:'本地 TTS 不可用，且未配置火山引擎。', local: localTts.status()}));
     }
 
     // rate (0.5~2.0, 1.0=正常) 转换成 Seed-TTS 2.0 的 speech_rate (-50~50, 0=正常)
@@ -342,23 +335,30 @@ function handleTTS(req,res){
 // ---------- 静态文件 ----------
 function serveStatic(req,res,relPath){
   const safe=path.normalize(relPath).replace(/^(\.\.[\/\\])+/,'');
-  const full=path.join(STATIC_DIR,safe);
-  if(!full.startsWith(STATIC_DIR)){
-    res.writeHead(403,CORS); return res.end('403');
-  }
-  fs.stat(full,(e,s)=>{
-    if(e||!s.isFile()){
+  // 兼容两种布局：repo 根（旧）与 repo/static/ 子目录（新模块化前端）
+  const candidates=[
+    path.join(STATIC_DIR,safe),
+    path.join(STATIC_DIR,'static',safe),
+  ];
+  const tryNext=i=>{
+    if(i>=candidates.length){
       res.writeHead(404,{...CORS,'Content-Type':'text/plain; charset=utf-8'});
       return res.end('404 not found: '+relPath);
     }
-    const ext=path.extname(full).toLowerCase();
-    res.writeHead(200,{
-      ...CORS,
-      'Content-Type' : MIME[ext] || 'application/octet-stream',
-      'Cache-Control': 'no-cache',
+    const full=candidates[i];
+    if(!full.startsWith(STATIC_DIR)){ tryNext(i+1); return; }
+    fs.stat(full,(e,s)=>{
+      if(e||!s.isFile()){ tryNext(i+1); return; }
+      const ext=path.extname(full).toLowerCase();
+      res.writeHead(200,{
+        ...CORS,
+        'Content-Type' : MIME[ext] || 'application/octet-stream',
+        'Cache-Control': 'no-cache',
+      });
+      fs.createReadStream(full).pipe(res);
     });
-    fs.createReadStream(full).pipe(res);
-  });
+  };
+  tryNext(0);
 }
 
 // ---------- 路由 ----------
@@ -373,11 +373,13 @@ const server = http.createServer((req,res)=>{
     const ridInfo = VOLC_RESOURCE_ID
       ? `强制 ${VOLC_RESOURCE_ID}`
       : `${RID_DEFAULT}`;
+    const localInfo = localTts.status();
     res.writeHead(200,{...CORS,'Content-Type':'text/plain; charset=utf-8'});
     return res.end(
       `✅ 小学生作业辅导·本地服务\n`+
       `监听 : ${BIND}:${PORT}\n`+
       `上游 : ${UPSTREAM}\n`+
+      `本地TTS: ${localInfo.ready?'✅ Kokoro 离线模型':'⚠️  未就绪'}\n`+
       `TTS  : ${VOLC_APPID?'✅ 火山 豆包语音合成 2.0 · '+ridInfo:'⚠️  未配置（设 VOLC_APPID 和 VOLC_TOKEN 启用）'}\n`+
       `静态 : ${STATIC_DIR}\n\n`+
       `H5 入口: http://<本机 IP>:${PORT}/app\n`+
@@ -391,56 +393,71 @@ const server = http.createServer((req,res)=>{
 
   if(req.method==='POST' && pathname==='/v1/chat/completions') return proxyChat(req,res);
   if(pathname==='/tts' && (req.method==='GET'||req.method==='POST')) return handleTTS(req,res);
+  if(pathname==='/api/tts/status' && req.method==='GET'){
+    res.writeHead(200,{...CORS,'Content-Type':'application/json; charset=utf-8'});
+    return res.end(JSON.stringify(localTts.status()));
+  }
+
+  // ---------- 题库 / 课程纲目 / 出题器 / 覆盖率 API ----------
+  if(pathname.startsWith('/api/questions') && db){
+    const u=new URL(req.url,'http://x');
+    const query=Object.fromEntries(u.searchParams.entries());
+    const writeJSON=(status,body,extra)=>{
+      res.writeHead(status,{...CORS,'Content-Type':'application/json; charset=utf-8',...(extra||{})});
+      res.end(JSON.stringify(body));
+    };
+    if(req.method==='GET' && pathname==='/api/questions/pick'){
+      return questionsApi.pickHandler(db,query).then(r=>writeJSON(r.status,r.body,r.headers))
+        .catch(e=>writeJSON(500,{error:e.message}));
+    }
+    if(req.method==='GET' && pathname==='/api/questions/coverage'){
+      const r=questionsApi.coverageHandler(db,query);
+      return writeJSON(r.status,r.body);
+    }
+    if(req.method==='GET' && pathname==='/api/questions/availability'){
+      const r=questionsApi.availabilityHandler(db);
+      return writeJSON(r.status,r.body);
+    }
+    if(req.method==='POST' && pathname==='/api/questions'){
+      return readBody(req).then(buf=>{
+        const j=JSON.parse(buf.toString('utf-8'));
+        const r=questionsApi.addQuestionHandler(db,j);
+        writeJSON(r.status,r.body);
+      }).catch(e=>writeJSON(400,{error:e.message}));
+    }
+  }
+  if(pathname==='/api/curriculum' && req.method==='GET' && db){
+    const u=new URL(req.url,'http://x');
+    const query=Object.fromEntries(u.searchParams.entries());
+    const r=questionsApi.curriculumHandler(db,query);
+    res.writeHead(r.status,{...CORS,'Content-Type':'application/json; charset=utf-8'});
+    return res.end(JSON.stringify(r.body));
+  }
 
   // ---------- 错题库 API ----------
   if(pathname.startsWith('/api/wrongbook') && db){
     const u=new URL(req.url,'http://x');
     const user=u.searchParams.get('user')||'default';
     if(req.method==='GET' && pathname==='/api/wrongbook'){
-      const rows=db.prepare('SELECT * FROM wrong_questions WHERE user=? ORDER BY created_at DESC').all(user);
-      const out=rows.map(r=>({id:r.id,q:r.q,type:r.type,options:safeJSONParse(r.options,null),
-        answer:r.answer,userAnswer:r.user_answer,hints:safeJSONParse(r.hints,null),
-        explain:r.explain_text,topic:r.topic,grade:r.grade||null,subject:r.subject||'',
-        semester:r.semester||'',knowledgePoints:safeJSONParse(r.knowledge_points,[]),
-        source:r.source,date:r.created_at,
-        needsImage:!!r.needs_image,imageDesc:r.image_desc}));
+      const out=wrongbookApi.listForUser(db,user);
       res.writeHead(200,{...CORS,'Content-Type':'application/json; charset=utf-8'});
       return res.end(JSON.stringify(out));
     }
     if(req.method==='POST' && pathname==='/api/wrongbook'){
       return readBody(req).then(buf=>{
         const j=JSON.parse(buf.toString('utf-8'));
-        const existing=db.prepare('SELECT id FROM wrong_questions WHERE user=? AND q=?').get(user,j.q);
-        if(existing){res.writeHead(200,{...CORS,'Content-Type':'application/json'});return res.end('{"ok":true,"msg":"already exists"}')}
-        db.prepare(`INSERT INTO wrong_questions(user,q,type,options,answer,user_answer,hints,explain_text,topic,grade,subject,semester,knowledge_points,source,needs_image,image_desc)
-          VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(
-            user,
-            j.q,
-            j.type,
-            j.options?JSON.stringify(j.options):null,
-            j.answer,
-            j.userAnswer,
-            j.hints?JSON.stringify(j.hints):null,
-            j.explain||'',
-            j.topic||'',
-            j.grade||null,
-            j.subject||'',
-            j.semester||'',
-            Array.isArray(j.knowledgePoints)?JSON.stringify(j.knowledgePoints):'[]',
-            j.source||'',
-            j.needsImage?1:0,
-            j.imageDesc||''
-          );
-        res.writeHead(200,{...CORS,'Content-Type':'application/json'});res.end('{"ok":true}');
+        const result=wrongbookApi.addOne(db,user,j);
+        res.writeHead(200,{...CORS,'Content-Type':'application/json'});
+        res.end(JSON.stringify(result));
       }).catch(e=>{res.writeHead(400,{...CORS,'Content-Type':'application/json'});res.end(JSON.stringify({error:e.message}))});
     }
     if(req.method==='DELETE' && pathname.startsWith('/api/wrongbook/')){
       const id=parseInt(pathname.split('/').pop());
-      if(id){db.prepare('DELETE FROM wrong_questions WHERE id=? AND user=?').run(id,user)}
+      wrongbookApi.deleteOne(db,user,id);
       res.writeHead(200,{...CORS,'Content-Type':'application/json'});return res.end('{"ok":true}');
     }
     if(req.method==='DELETE' && pathname==='/api/wrongbook'){
-      db.prepare('DELETE FROM wrong_questions WHERE user=?').run(user);
+      wrongbookApi.clearForUser(db,user);
       res.writeHead(200,{...CORS,'Content-Type':'application/json'});return res.end('{"ok":true}');
     }
   }
@@ -462,6 +479,8 @@ server.listen(PORT,BIND,()=>{
   console.log('  监听 : '+BIND+':'+PORT);
   console.log('  上游 : '+UPSTREAM);
   console.log('  静态 : '+STATIC_DIR);
+  const localInfo = localTts.status();
+  console.log('  本地TTS: '+(localInfo.ready?'✅ Kokoro 离线模型 · '+localInfo.modelDir:'⚠️  未就绪'));
   if(VOLC_APPID){
     const ridInfo = VOLC_RESOURCE_ID
       ? `强制 ${VOLC_RESOURCE_ID}`

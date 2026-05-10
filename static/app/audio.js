@@ -1,25 +1,65 @@
 // 音效系统 — 使用 WebAudio 合成，无需音频文件
-// 所有音效都用震荡器实时合成，包内零依赖
+//
+// 移动端音频解锁：iOS Safari / 部分 Android 浏览器要求 AudioContext 必须
+// 在 user gesture 的同步路径里 resume()，否则永远 suspended（无声）。
+// boot 时调用 installUnlockHook()，在 body 上挂一次性 pointerdown/touchstart
+// 监听，第一次用户手势同步：
+//   1) 创建 AudioContext + resume
+//   2) 播一段 1 采样点的静音，强制激活音频输出
+//   3) 用 muted Audio 元素 play 一次，解锁 TTS 的 HTML5 audio
 
 let ctx = null;
 let muted = false;
 let masterGain = null;
+let unlocked = false;
+
+function makeCtx() {
+  try {
+    ctx = new (window.AudioContext || window.webkitAudioContext)();
+    masterGain = ctx.createGain();
+    masterGain.gain.value = 0.4;
+    masterGain.connect(ctx.destination);
+  } catch (e) { console.warn('[audio] WebAudio 不可用:', e); }
+}
 
 function ensureCtx() {
-  if (!ctx) {
-    try {
-      ctx = new (window.AudioContext || window.webkitAudioContext)();
-      masterGain = ctx.createGain();
-      masterGain.gain.value = 0.4;
-      masterGain.connect(ctx.destination);
-    } catch (e) {
-      console.warn('[audio] WebAudio 不可用:', e);
-    }
-  }
-  // 浏览器自动播放策略：用户首次交互后 resume
+  if (!ctx) makeCtx();
   if (ctx?.state === 'suspended') ctx.resume().catch(() => {});
   return ctx;
 }
+
+// user gesture 同步路径里调用 — 解锁 WebAudio 与 HTML5 Audio
+function unlockAudio() {
+  if (unlocked) return;
+  if (!ctx) makeCtx();
+  if (!ctx) return;
+  ctx.resume().catch(() => {});
+  try {
+    const buf = ctx.createBuffer(1, 1, 22050);
+    const src = ctx.createBufferSource();
+    src.buffer = buf;
+    src.connect(ctx.destination);
+    src.start(0);
+  } catch (_) {}
+  // 解锁 HTML5 Audio（TTS 用 new Audio()）
+  try {
+    const a = new Audio();
+    a.muted = true;
+    a.play().catch(() => {});
+    setTimeout(() => { try { a.pause(); } catch (_) {} }, 60);
+  } catch (_) {}
+  unlocked = true;
+}
+
+// boot 时挂一次性事件监听 —— 第一次手势就解锁
+export function installUnlockHook() {
+  if (typeof document === 'undefined') return;
+  const handler = () => { unlockAudio(); };
+  const events = ['pointerdown', 'touchstart', 'mousedown', 'keydown'];
+  for (const ev of events) document.addEventListener(ev, handler, { once: true, capture: true });
+}
+
+export function isUnlocked() { return unlocked; }
 
 export function setMuted(v) { muted = !!v; }
 export function isMuted() { return muted; }

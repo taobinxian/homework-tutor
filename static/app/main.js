@@ -23,6 +23,7 @@ const SAVE_KEY = 'scholar_odyssey_save_v1';
 const SAVE = migrateState(loadJSON(SAVE_KEY, null));
 syncTTSConfig();
 audio.setMuted(SAVE.prefs.muted || false);
+audio.installUnlockHook();  // 移动端首次手势解锁 WebAudio + HTML5 Audio
 
 function persistSave() { saveJSON(SAVE_KEY, SAVE); }
 function refreshAll() { renderTopbar(); renderPet($('#pet-area'), SAVE); }

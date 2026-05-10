@@ -27,15 +27,38 @@
 
 ## 二、上传文件到 Ubuntu
 
-本机执行（把路径改成你的 session 目录）：
+最简：用 [`./deploy.sh`](deploy.sh)（推荐）：
 
 ```bash
-# 在你的电脑上
-scp proxy.js index.html homework.service \
-    user@192.168.3.79:/tmp/homework/
+./deploy.sh <SSH 用户名> --install        # 首次安装
+./deploy.sh <SSH 用户名> --service        # 连 service 文件一起更新
+./deploy.sh <SSH 用户名>                   # 普通更新（自动跑 npm install + db:migrate + db:seed）
 ```
 
-> 如果 `/tmp/homework/` 不存在，先 `ssh user@192.168.3.79 mkdir -p /tmp/homework`
+deploy.sh 会自动同步以下子目录：`lib/`、`scripts/`、`static/`、`generators/`、`legacy/`，以及 `package.json` / `package-lock.json` / `index.html` / `proxy.js`。
+
+> 手工部署仅供调试参考：
+> ```bash
+> scp -r proxy.js index.html package.json package-lock.json homework.service \
+>        lib scripts static generators legacy \
+>        user@192.168.3.79:/tmp/homework/
+> ```
+
+### 数据库迁移与 seed（首次部署 / 升级必跑）
+
+服务端目录布局完成后：
+
+```bash
+ssh user@192.168.3.79
+cd /opt/homework
+sudo -u homework npm install --omit=dev
+sudo -u homework npm rebuild better-sqlite3   # native 模块跨 Node 版本要 rebuild
+sudo -u homework npm run db:migrate           # 创建/升级 schema (幂等)
+sudo -u homework npm run db:seed              # 写入 curriculum + legacy 题库 + 生成器 (幂等)
+sudo systemctl restart homework
+```
+
+`deploy.sh` 已把这一系列命令串到 `--install` / `--service` / `update` 模式中。
 
 ---
 

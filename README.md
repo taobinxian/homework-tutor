@@ -16,16 +16,96 @@
 ## 项目结构
 
 ```
-├── index.html          # 主页面（HTML + CSS + JS 单文件应用）
-├── proxy.js            # Node.js 代理服务（AI 转发 + TTS + 错题库 API + 静态托管）
-├── questions.js        # 题库初始化 + 工具函数
-├── curriculum.js       # 人教版学期与知识点映射表
-├── grade1.js ~ grade6.js  # 各年级题库（人教版）
-├── scripts/validate-question-bank.js  # 题库学期/知识点校验脚本
-├── homework.service    # systemd 服务配置
-├── deploy.sh           # 一键部署脚本
-└── DEPLOY.md           # 火山引擎 TTS 配置详细说明
+├── index.html              # 主页面骨架（HTML + CSS）；JS 由模块引导
+├── proxy.js                # Node.js HTTP 服务（AI/TTS/错题/题库 API + 静态托管）
+├── lib/                    # 服务端共享模块
+│   ├── db.js               # SQLite 连接 + initSchema (questions/generators/curriculum/wrong_questions)
+│   ├── picker.js           # 出题器: pickQuestions(opts) — 4 种 source 抽题
+│   ├── coverage.js         # 覆盖率聚合 (CLI + HTTP 共用)
+│   ├── questions-api.js    # /api/questions/* HTTP 处理函数
+│   └── wrongbook-api.js    # /api/wrongbook 处理函数
+├── static/app/             # 前端 ESM 模块
+│   ├── main.js             # 入口 + 关卡选择 UI + 引擎挂载
+│   ├── data.js             # 后端 API 封装（fetch 层）
+│   ├── ui.js               # 共享 UI（toast / showConfirm / 粒子动画）
+│   ├── tts.js              # 朗读（服务端 TTS + 浏览器兜底）
+│   ├── pets.js             # 宠物系统（升级、渲染）
+│   ├── ai.js               # AI 讲解 + 拍照出题
+│   └── engines/            # 关卡引擎插件
+│       ├── base.js         # LevelEngine 抽象接口
+│       ├── battle.js       # ⚔️ 战斗（能量弹打怪）
+│       ├── shooting.js     # 🎯 射击（靶心 + 倒计时）
+│       └── fighting.js     # 🥋 格斗（血条 + Combo + 多阶段 Boss）
+├── generators/             # 题模板（运行时生成无穷题）
+│   ├── _template.js        # 模板与协议示例
+│   ├── README.md           # 生成器编写指南
+│   └── g{grade}-{subj}-{slug}.js  # 每个生成器一个文件
+├── scripts/
+│   ├── db-migrate.js       # 创建/升级 schema（幂等）
+│   ├── db-seed-curriculum.js  # 课程纲目入库
+│   ├── db-seed-legacy.js   # 旧 grade*.js 物化进 questions 表
+│   ├── db-seed-generators.js  # 扫描 generators/ 注册元数据
+│   ├── coverage.js         # 覆盖率矩阵 CLI（--json / --threshold / --strict）
+│   └── validate-question-bank.js  # schema + topic + 生成器校验
+├── test/                   # node:test 单元/集成测试
+├── legacy/                 # 重构前快照（grade*.js / questions.js / curriculum.js / index.html.original）
+├── homework.service        # systemd 服务配置
+├── deploy.sh               # 一键部署脚本（已支持新结构 + 自动 db:migrate + db:seed）
+└── DEPLOY.md               # 火山引擎 TTS 配置说明
 ```
+
+## 题库与出题器
+
+题库与课程纲目存在 SQLite (`wrongbook.db`) 中：
+- **questions** 表：静态题库（含旧 `grade*.js` 物化结果），按 `content_hash` 去重
+- **generators** 表：题模板元数据（实际代码在 `generators/*.js`）
+- **curriculum** 表：人教版课程纲目（grade × subject × topic → semester + 知识点）
+- **wrong_questions** 表：错题库（多设备共享）
+
+### 出题接口 `pickQuestions`
+
+服务端唯一抽题入口 [`lib/picker.js`](lib/picker.js)：
+
+```javascript
+pickQuestions({
+  grade, subject,           // 必填
+  semester?, lv?, topic?,   // 可选过滤
+  source = 'mixed',         // static | generated | mixed | wrongbook-practice
+  count = 10,
+  user, excludeIds,
+});
+```
+
+HTTP：`GET /api/questions/pick?grade=1&subject=math&lv=2&count=10&source=mixed`
+
+### 添加新题
+
+**静态题**：编辑 seed 数据后 `npm run db:seed:legacy`（content_hash 去重，可重跑）。
+
+**生成器**：在 `generators/` 下新建 `g{grade}-{subj}-{slug}.js`（参考 `_template.js`），导出 `meta` + `generate(n, ctx)`，运行 `npm run db:seed:generators` 注册。
+
+**拍照出题**：浏览器内点 📷 拍照按钮，AI 识别后自动 POST 到 `/api/questions`（`source='photo'`）。
+
+### 覆盖率与校验
+
+```bash
+npm run coverage              # 输出 grade × subject × semester × topic × lv 矩阵
+npm run coverage -- --json    # JSON 输出
+npm run coverage -- --strict  # 缺口存在则非零退出（CI 卡线）
+npm run coverage -- --update-baseline   # 写入 .coverage-baseline.json
+npm run coverage -- --check-baseline    # 比基线，新增缺口非零退出
+npm run validate:bank         # schema + 生成器存在性 + topic 在 curriculum 校验
+```
+
+## 关卡引擎
+
+每关 = **题目集合 × 引擎玩法**（解耦）。三种内置引擎实现 `LevelEngine` 接口：
+
+- **⚔️ Battle** — 能量弹打怪、Combo、Boss 反击
+- **🎯 Shooting** — 移动靶 + 倒计时（lv1=15s/lv2=10s/lv3=6s）+ 怪物突破防线
+- **🥋 Fighting** — 双方血条 + 出招 + Combo 必杀 + Boss 多阶段（HP 50%/25% 切换）
+
+任何题目集合（包括错题练习）都可挂任意引擎。在主页选择 "玩法" 维度切换。
 
 ## 快速部署
 
@@ -37,12 +117,14 @@
 
 ### 0. 本机 macOS 启动（开发/自用）
 
-如果你是在这台 Mac 上直接运行，而不是部署到远程 Linux 服务器，最简单有两种方式：
+如果你是在这台 Mac 上直接运行，而不是部署到远程 Linux 服务器：
 
 ```bash
-# 方式一：当前终端前台启动
 cd /Users/taobinxian/homework-tutor
-node proxy.js
+npm install                    # 装依赖（含 better-sqlite3 native）
+npm run db:migrate             # 创建 schema
+npm run db:seed                # 入库题目 + 生成器（首次部署必跑）
+npm start                      # 等价 node proxy.js
 
 # 浏览器访问
 http://localhost:8787/app
@@ -79,7 +161,9 @@ export HOST=192.168.3.79
 脚本会自动完成：
 - 检查/安装 Node.js 20
 - 创建 `homework` 系统用户
-- 上传所有文件到 `/opt/homework/`
+- 上传所有文件到 `/opt/homework/`（含 `lib/`、`scripts/`、`static/`、`generators/`、`legacy/`）
+- `npm install` + `npm rebuild better-sqlite3`
+- `npm run db:migrate && npm run db:seed`（schema + 静态题 + 课程 + 生成器入库）
 - 安装 systemd 服务
 - 开放 8787 端口（如有 ufw）
 
@@ -110,25 +194,22 @@ sudo systemctl restart homework
 
 > 详细 TTS 配置说明见 [DEPLOY.md](DEPLOY.md)
 
-### 3. 安装错题库依赖
+### 3. 数据库
 
-错题库使用 SQLite 存储在服务端，需安装 `better-sqlite3`：
+`/opt/homework/wrongbook.db` 含 4 张表：
+- `wrong_questions`（错题库）
+- `questions`（静态题库 — 由 `npm run db:seed:legacy` 从 `legacy/grade*.js` 物化）
+- `generators`（生成器元数据 — 由 `npm run db:seed:generators` 注册）
+- `curriculum`（课程纲目 — 由 `npm run db:seed:curriculum` 入库）
 
-```bash
-ssh <用户名>@<服务器IP>
-cd /opt/homework
-sudo npm install better-sqlite3
-sudo systemctl restart homework
-```
-
-数据库文件自动创建在 `/opt/homework/wrongbook.db`。
+`db:migrate` 与三个 `db:seed:*` 都是**幂等**的，部署时被 `deploy.sh` 自动执行。
 
 ### 4. 日常更新
 
 修改代码后，一键更新部署：
 
 ```bash
-# 普通更新（只覆盖 HTML + JS 文件，重启服务）
+# 普通更新（覆盖代码 + 子目录 → 重新 npm install + db:migrate + db:seed → 重启服务）
 ./deploy.sh <用户名>
 
 # 连 systemd service 文件一起更新（自动保留已有 Token）
@@ -174,6 +255,7 @@ sudo journalctl -u homework -f
 | `VOLC_TOKEN` | (空) | 火山引擎 Access Token |
 | `VOLC_RESOURCE_ID` | (空) | 留空自动使用 `seed-tts-2.0` |
 | `STATIC_DIR` | 脚本所在目录 | 静态文件目录 |
+| `HOMEWORK_DB` | `<repo>/wrongbook.db` | 数据库路径（测试用） |
 
 ### API 路由
 
@@ -183,11 +265,13 @@ sudo journalctl -u homework -f
 | `/app` | GET | 主页面 |
 | `/v1/chat/completions` | POST | AI 聊天代理（转发到上游） |
 | `/tts?text=...&voice=...` | GET/POST | 火山引擎 TTS 语音合成 |
-| `/api/wrongbook?user=...` | GET | 获取错题列表 |
-| `/api/wrongbook?user=...` | POST | 添加错题 |
+| `/api/wrongbook?user=...` | GET/POST/DELETE | 错题库 CRUD |
 | `/api/wrongbook/<id>?user=...` | DELETE | 删除单条错题 |
-| `/api/wrongbook?user=...` | DELETE | 清空错题库 |
-| `/static/<file>` | GET | 静态文件 |
+| `/api/questions/pick` | GET | 出题：`?grade=&subject=&lv=&topic=&count=&source=&user=` |
+| `/api/questions/coverage` | GET | 覆盖率矩阵 JSON |
+| `/api/questions` | POST | 加题（拍照/手动） |
+| `/api/curriculum` | GET | 课程纲目：`?grade=&subject=` |
+| `/static/<file>` | GET | 静态文件（兼容 `static/` 子目录与根目录两种布局） |
 
 ### 前端默认配置
 
@@ -202,41 +286,24 @@ sudo journalctl -u homework -f
 
 ## 题库说明
 
-题库按人教版教材编排，存放在 `grade1.js` ~ `grade6.js` 中，教材映射规则集中维护在 `curriculum.js`：
+> 题库已迁移到 SQLite (`wrongbook.db`)。原 `grade*.js` / `questions.js` / `curriculum.js` 归档在 `legacy/`，仅供历史参考。
 
-- 每年级包含数学、语文、英语三科（3年级起增加科学）
-- 每题带 `lv` 字段标记难度：`1`=入门、`2`=进阶、`3`=挑战
-- 页面加载时会自动补齐 `semester`、`semesterLabel`、`knowledgePoints`
-- 关卡按难度筛选题目：入门关只出 lv1，进阶关出 lv1+2，挑战关出全部
-- 闯关会按“学科 + 学期 + 难度”取题，错题库也会保存学期和知识点
-- 计算类题目通过循环随机生成，每次刷新不重复
+- **questions** 表：静态题（每题带 `content_hash` 去重）。`grade`、`subject`、`semester`、`topic`、`knowledge_points`、`lv` 都已结构化
+- **generators** 表：题模板的元数据指针；模板代码在 `generators/<key>.js`
+- **curriculum** 表：人教版课程纲目；`(grade, subject, topic)` 唯一
+- 关卡按 `(grade, subject, semester?, lv?)` 经 `pickQuestions` 抽题；错题库按 `topic + lv` 反哺扩展练习
 
-添加新题格式：
-```javascript
-QB[年级].math.push({
-  q: '题目文字',
-  type: 'choice',           // 'choice' 或 'input'
-  options: shuffle(['A','B','C','D']),  // choice 类型必填
-  answer: 'A',              // 正确答案
-  hints: ['提示1','提示2','提示3'],
-  explain: '一句话讲解',
-  topic: '知识点名称',
-  semester: 'upper',        // 可选：上册/下册，通常由 curriculum.js 自动补齐
-  knowledgePoints: ['知识点名称'], // 可选：通常由 curriculum.js 自动补齐
-  lv: 1                     // 1=入门 2=进阶 3=挑战
-});
-```
+### 维护流程
 
-推荐维护方式：
-
-- 优先在 `curriculum.js` 里维护 `年级 + 学科 + topic -> semester + knowledgePoints` 映射。
-- 只有少量模糊题目才通过 `QB_CURRICULUM_OVERRIDES` 做题目级覆写。
-- 改完题库后运行 `npm run validate:bank`，检查各年级/学科/学期分布和未映射题目。
+1. 想新增静态题：手工编辑 seed 文件或 `POST /api/questions`，跑 `npm run db:seed:legacy`（content_hash 自动去重）
+2. 想新增题模板：参考 `generators/_template.js` + `generators/README.md`，跑 `npm run db:seed:generators`
+3. 改完跑 `npm run validate:bank`（schema 校验）+ `npm run coverage`（覆盖率审视）
 
 校验命令：
 
 ```bash
-npm run validate:bank
+npm run validate:bank   # schema + 生成器存在性 + topic 在 curriculum 内
+npm run coverage        # grade × subject × semester × topic × lv 矩阵 + 缺口
 ```
 
 ## 常见问题
@@ -247,8 +314,12 @@ npm run validate:bank
 **Q: 拍照出题识别不准？**
 建议将 AI 模型改为 `openai/gpt-4o`（而非 mini），视觉识别能力更强。
 
-**Q: 错题库加载失败？**
-确认已安装 `better-sqlite3`（`cd /opt/homework && sudo npm install better-sqlite3`）。
+**Q: 错题库 / 题库加载失败？**
+确认 `better-sqlite3` 安装且 native 已编译：`cd /opt/homework && sudo -u homework npm rebuild better-sqlite3`。
+确认 schema 已迁移：`sudo -u homework npm run db:migrate && sudo -u homework npm run db:seed`。
+
+**Q: 跨 Node 版本部署后启动失败？**
+`better-sqlite3` 是 native 模块，跨主版本需 rebuild：`sudo -u homework npm rebuild better-sqlite3`。
 
 **Q: 手机上显示不正常？**
 如果是手机或同局域网其他设备访问，请使用 `http://<IP>:8787/app`，不要用 `localhost`；如果是本机浏览器访问，`http://localhost:8787/app` 是可以的。

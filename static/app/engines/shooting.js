@@ -167,6 +167,10 @@ export class ShootingEngine extends LevelEngine {
     if (correct) {
       this.score += 10;
       this._scoreN.textContent = this.score;
+      // 醒目动画 — 即使马上跳到下一题也能感知
+      this._scoreN.classList.remove('sh-score-pop');
+      void this._scoreN.offsetWidth;  // 触发 reflow 重启动画
+      this._scoreN.classList.add('sh-score-pop');
       this._killClosestMonster();
     } else {
       // 错答 = 怪物前进 = 屏幕震动 + 红闪

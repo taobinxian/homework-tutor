@@ -38,6 +38,8 @@ export class ShootingEngine extends LevelEngine {
     this._timer = null;
     this._timeLeft = 0;
     this.E = opts.config?.itemEffects || {};
+    this.shieldRemain = this.E.shieldCharges || 0;
+    this.reviveRemain = this.E.revive || 0;
   }
 
   async start() {
@@ -87,8 +89,25 @@ export class ShootingEngine extends LevelEngine {
       this.defense -= breached;
       this._defN.textContent = Math.max(0, this.defense);
       if (this.defense <= 0) {
-        this.stats.ended = true;
-        fx.bigText(this.container, '💔 DEFENSE FAILED', { color: '#ff4040', duration: 1600, crit: true });
+        // 道具：复活卷 — 防线 0 时回血到 3 + 清场
+        if (this.reviveRemain > 0) {
+          this.reviveRemain--;
+          this.defense = 3;
+          this._defN.textContent = this.defense;
+          // 清掉所有距离 ≥3 的怪物
+          for (const m of [...this.monsters]) {
+            if (m.distance >= 3) {
+              m.el.classList.add('killed');
+              setTimeout(() => m.el.remove(), 400);
+            }
+          }
+          this.monsters = this.monsters.filter(m => m.distance < 3);
+          fx.flashScreen('rgba(255,207,75,.7)', 320);
+          fx.bigText(this.container, '❤️ 凤凰复活 防线+3!', { crit: true, color: '#ffcf4b', duration: 1400 });
+        } else {
+          this.stats.ended = true;
+          fx.bigText(this.container, '💔 DEFENSE FAILED', { color: '#ff4040', duration: 1600, crit: true });
+        }
       }
     }
   }
@@ -191,6 +210,14 @@ export class ShootingEngine extends LevelEngine {
       this._scoreN.classList.add('sh-score-pop');
       this._killClosestMonster();
     } else {
+      // 道具：守护盾 — 答错时怪物不前进
+      if (this.shieldRemain > 0) {
+        this.shieldRemain--;
+        fx.flashScreen('rgba(80,180,255,.4)', 80);
+        fx.bigText(this.container, `🛡 守护盾抵挡 (剩 ${this.shieldRemain})`, { color: '#6cdcff', duration: 800 });
+        await new Promise(r => setTimeout(r, 250));
+        return;
+      }
       // 错答 = 怪物前进 = 屏幕震动 + 红闪
       fx.flashScreen('rgba(255,80,80,.4)', 100);
       fx.screenShake(2);

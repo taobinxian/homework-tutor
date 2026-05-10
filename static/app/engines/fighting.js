@@ -55,6 +55,10 @@ export class FightingEngine extends LevelEngine {
     this.combo = 0;
     this.maxCombo = 0;
     this.bossPhase = 1;  // 1 → 2 → 3
+    // 道具效果
+    this.E = opts.config?.itemEffects || {};
+    this.shieldRemain = this.E.shieldCharges || 0;
+    this.reviveRemain = this.E.revive || 0;
   }
 
   async start() {
@@ -108,6 +112,16 @@ export class FightingEngine extends LevelEngine {
         for (const h of askKeyHandlers) document.removeEventListener('keydown', h);
         this._removeAskListeners = null;
       };
+      // 道具：全知之眼 — 自动展示首条提示
+      if (this.E.autoHint && Array.isArray(q.hints) && q.hints.length) {
+        setTimeout(() => {
+          const bubble = document.createElement('div');
+          bubble.className = 'hint-bubble';
+          bubble.textContent = q.hints[0];
+          this.container.appendChild(bubble);
+          setTimeout(() => bubble.remove(), 2400);
+        }, 200);
+      }
     });
   }
 
@@ -132,11 +146,21 @@ export class FightingEngine extends LevelEngine {
       this.maxCombo = Math.max(this.maxCombo, this.combo);
       this._comboN.textContent = this.combo;
       let dmg = 12;
-      const isUlt = this.combo >= 3;
+      // 道具：闪电之剑（伤害倍率）
+      if (this.E.damageMultiplier && this.E.damageMultiplier > 1) {
+        dmg = Math.round(dmg * this.E.damageMultiplier);
+      }
+      // 道具：暴击护符（按概率额外暴击 → 当作 ult 处理）
+      let extraCrit = false;
+      if (this.E.critChance && Math.random() < this.E.critChance) {
+        extraCrit = true;
+        dmg = Math.round(dmg * (this.E.critMultiplier || 2));
+      }
+      const isUlt = this.combo >= 3 || extraCrit;
       if (isUlt) {
-        dmg *= 2;
+        if (this.combo >= 3) dmg *= 2;  // 必杀本身的 2x（与暴击叠加）
         fx.slowMotion(450);
-        fx.bigText(this.container, '💥 必杀技！', { crit: true });
+        fx.bigText(this.container, extraCrit ? '💎 暴击！' : '💥 必杀技！', { crit: true });
         fx.flashScreen('#ffcf4b', 180);
       }
 
@@ -187,6 +211,17 @@ export class FightingEngine extends LevelEngine {
       this._comboN.textContent = 0;
       const counterDmg = 8 * this.bossPhase;
 
+      // 道具：守护盾 — 答错免伤害
+      if (this.shieldRemain > 0) {
+        this.shieldRemain--;
+        const r = this._heroEl.getBoundingClientRect();
+        fx.flashScreen('rgba(80,180,255,.4)', 80);
+        fx.impactRing(r.left + r.width / 2, r.top + r.height / 2, '#6cdcff');
+        fx.bigText(this.container, `🛡 守护盾抵挡 (剩 ${this.shieldRemain})`, { color: '#6cdcff', duration: 800 });
+        await new Promise(r => setTimeout(r, 380));
+        return;
+      }
+
       // Boss 反击：拳影从 Boss 飞向玩家
       await fx.projectile(this._bossEl, this._heroEl, { emoji: '💢', duration: 220 });
       const heroRect = this._heroEl.getBoundingClientRect();
@@ -204,8 +239,18 @@ export class FightingEngine extends LevelEngine {
       this._pHp.style.width = this.playerHp + '%';
 
       if (this.playerHp <= 0) {
-        this.stats.ended = true;
-        fx.bigText(this.container, '💔 GAME OVER', { color: '#ff4040', duration: 1800 });
+        // 道具：复活卷
+        if (this.reviveRemain > 0) {
+          this.reviveRemain--;
+          this.playerHp = 50;
+          this._pHp.style.width = '50%';
+          fx.flashScreen('rgba(255,207,75,.7)', 320);
+          fx.bigText(this.container, '❤️ 凤凰复活!', { crit: true, color: '#ffcf4b', duration: 1400 });
+          confetti(40);
+        } else {
+          this.stats.ended = true;
+          fx.bigText(this.container, '💔 GAME OVER', { color: '#ff4040', duration: 1800 });
+        }
       }
     }
     await new Promise(r => setTimeout(r, 380));

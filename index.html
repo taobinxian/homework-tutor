@@ -89,10 +89,10 @@ body{
 .shooting .sh-q{position:absolute;left:50%;top:30%;transform:translate(-50%,-50%);background:rgba(255,255,255,.18);padding:12px 18px;border-radius:14px;font-size:16px;backdrop-filter:blur(6px);text-align:center;max-width:90%;line-height:1.4;font-weight:500;color:#fff}
 .shooting .sh-tts{position:absolute;right:12px;top:12px;z-index:2}
 .shooting .sh-targets{position:absolute;inset:0}
-.shooting .sh-target{position:absolute;padding:12px 18px;background:linear-gradient(135deg,#ffaa44,#ff6633);color:#fff;border:0;border-radius:50%;cursor:pointer;font-size:14px;font-weight:bold;box-shadow:0 4px 12px rgba(255,100,0,.4);min-width:54px;min-height:54px;animation:pulse 2s infinite}
-.shooting .sh-target:hover{transform:scale(1.1)}
+.shooting .sh-target{position:absolute;padding:10px 14px;background:linear-gradient(135deg,#ffaa44,#ff6633);color:#fff;border:0;border-radius:30px;cursor:pointer;font-size:13px;font-weight:bold;box-shadow:0 4px 12px rgba(255,100,0,.4);min-width:54px;min-height:54px;max-width:42%;line-height:1.2;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;transform:translate(-50%,-50%);animation:pulse 2s infinite}
+.shooting .sh-target:hover{transform:translate(-50%,-50%) scale(1.1);z-index:3}
 .shooting .sh-target.answered{cursor:default;pointer-events:none;animation:none;opacity:.55}
-.shooting .sh-target.selected{opacity:1;transform:scale(1.14);box-shadow:0 0 0 4px rgba(255,255,255,.28),0 8px 22px rgba(0,0,0,.35)}
+.shooting .sh-target.selected{opacity:1;transform:translate(-50%,-50%) scale(1.14);box-shadow:0 0 0 4px rgba(255,255,255,.28),0 8px 22px rgba(0,0,0,.35);z-index:4}
 .shooting .sh-target.correct{background:linear-gradient(135deg,#38e27c,#0e9f4d)}
 .shooting .sh-target.wrong{background:linear-gradient(135deg,#ff5a5f,#b71c35)}
 @keyframes pulse{0%,100%{box-shadow:0 4px 12px rgba(255,100,0,.4)}50%{box-shadow:0 4px 20px rgba(255,150,50,.7)}}

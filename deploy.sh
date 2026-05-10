@@ -22,6 +22,8 @@ set -euo pipefail
 # ---------- 默认配置（可通过环境变量 / 位置参数覆盖） ----------
 HOST="${HOST:-111.229.191.225}"
 SSH_PORT="${SSH_PORT:-22}"
+# 域名（用于健康检查 / 输出）；若公网域名生效会优先用 HTTPS 域名探测
+DOMAIN="${DOMAIN:-taobinxian.cloud}"
 DEFAULT_USER="ubuntu"
 REMOTE_USER="${SSH_USER:-}"
 SSH_PASS="${SSH_PASS:-}"
@@ -80,19 +82,36 @@ c_r() { printf "\033[31m%s\033[0m\n" "$*"; }
 c_b() { printf "\033[1m%s\033[0m\n" "$*"; }
 
 # ---------- 健康检查（无需 SSH） ----------
+# 自动选 base url：HTTPS 域名优先，否则回退到 IP:8787
+pick_base_url() {
+  if [[ -n "$DOMAIN" ]]; then
+    if curl -fsS -m 5 -o /dev/null "https://${DOMAIN}/" 2>/dev/null; then
+      echo "https://${DOMAIN}"
+      return
+    fi
+  fi
+  echo "http://${HOST}:8787"
+}
+
 health_check() {
-  c_b "🩺 健康检查 → http://${HOST}:8787/"
+  local BASE
+  BASE=$(pick_base_url)
+  c_b "🩺 端点：${BASE}"
+  echo ""
+
+  c_b "🩺 健康检查 → ${BASE}/"
   local body
-  body=$(curl -s -m 8 "http://${HOST}:8787/" || true)
+  body=$(curl -s -m 8 "${BASE}/" || true)
   if [[ -z "$body" ]]; then
-    c_r "❌ 端口 8787 不可达"
+    c_r "❌ 不可达"
     return 1
   fi
   echo "$body" | head -8
   echo ""
+
   c_b "🩺 题库覆盖率 → /api/questions/coverage"
   local cov
-  cov=$(curl -s -m 8 "http://${HOST}:8787/api/questions/coverage" || true)
+  cov=$(curl -s -m 8 "${BASE}/api/questions/coverage" || true)
   if [[ "$cov" == *"summary"* ]]; then
     echo "$cov" | python3 -c "import sys,json;d=json.load(sys.stdin);s=d['summary'];print(f'   静态题: {s[\"totalQuestions\"]}, 生成器变体: {s[\"totalGenerators\"]}, 覆盖率: {s[\"coveragePercent\"]}%')" 2>/dev/null \
       || echo "   $(echo "$cov" | head -c 200)"
@@ -100,18 +119,20 @@ health_check() {
     c_y "   ⚠️ /api/questions/coverage 无响应（旧版可能未部署）"
   fi
   echo ""
+
   c_b "🩺 TTS → /tts?text=你好"
   local code size
-  read -r code size < <(curl -s -m 10 -o /dev/null -w "%{http_code} %{size_download}" "http://${HOST}:8787/tts?text=你好&voice=zf_xiaoxiao")
+  read -r code size < <(curl -s -m 10 -o /dev/null -w "%{http_code} %{size_download}" "${BASE}/tts?text=你好&voice=zf_xiaoxiao")
   if [[ "$code" == "200" && "$size" -gt 1000 ]]; then
     c_g "   ✅ TTS HTTP 200, ${size} bytes"
   else
-    c_y "   ⚠️ TTS 异常: HTTP $code, ${size} bytes"
+    c_y "   ⚠️ TTS 异常: HTTP $code, ${size} bytes（可能 VOLC_TOKEN 失效或 kokoro 模型未上传）"
   fi
   echo ""
+
   c_b "🩺 抽题 → /api/questions/pick?grade=1&subject=math&n=1"
   local pick
-  pick=$(curl -s -m 8 "http://${HOST}:8787/api/questions/pick?grade=1&subject=math&n=1" || true)
+  pick=$(curl -s -m 8 "${BASE}/api/questions/pick?grade=1&subject=math&n=1" || true)
   if [[ "$pick" == *'"q":'* ]]; then
     c_g "   ✅ 抽题接口正常"
   else
@@ -374,10 +395,13 @@ sleep 1
 health_check || c_y "⚠️ 健康检查有警告，请用 sudo journalctl -u homework -n 50 排查"
 
 echo ""
+BASE_FOR_LINKS=$(pick_base_url)
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 c_g "📍 访问入口"
-echo "   主页:      http://${HOST}:8787/app"
-echo "   健康检查:  http://${HOST}:8787/"
-echo "   覆盖率:    http://${HOST}:8787/api/questions/coverage"
-echo "   TTS 直测:  http://${HOST}:8787/tts?text=你好小朋友&voice=zf_xiaoxiao"
+echo "   主页:      ${BASE_FOR_LINKS}/app"
+echo "   健康检查:  ${BASE_FOR_LINKS}/"
+echo "   覆盖率:    ${BASE_FOR_LINKS}/api/questions/coverage"
+echo "   TTS 直测:  ${BASE_FOR_LINKS}/tts?text=你好小朋友&voice=zf_xiaoxiao"
+[[ -n "$DOMAIN" && "$BASE_FOR_LINKS" != "https://${DOMAIN}" ]] \
+  && c_y "   ⚠️ 域名 https://${DOMAIN}/ 当前不可达，已退回 IP:8787" || true
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"

@@ -126,17 +126,34 @@ export class ShootingEngine extends LevelEngine {
         resolve({ userAnswer: userAnswer || '', correct });
       };
 
-      for (const opt of opts) {
+      // 网格槽位：把选项均分到 2×2 网格，避免长文本互相重叠
+      // 选项数 ≤4 用 2×2；>4 退回单行均分
+      const N = opts.length;
+      const slots = N <= 4
+        ? [{ cx:25,cy:52 },{ cx:75,cy:52 },{ cx:25,cy:80 },{ cx:75,cy:80 }]
+        : Array.from({ length: N }, (_, i) => ({
+            cx: (i + 0.5) * (100 / N),
+            cy: 65,
+          }));
+      // 槽位顺序打乱，正确答案位置随机
+      const order = [...Array(slots.length).keys()].sort(() => Math.random() - 0.5);
+      const jitterX = 5, jitterY = 4;  // 槽位内随机抖动幅度
+
+      opts.forEach((opt, i) => {
         const btn = document.createElement('button');
         btn.className = 'sh-target';
         btn.textContent = opt;
         btn.dataset.answer = opt;
-        // 添加随机摆动
-        btn.style.left = (10 + Math.random() * 70) + '%';
-        btn.style.top = (40 + Math.random() * 30) + '%';
+        const slot = slots[order[i] ?? i % slots.length];
+        const dx = (Math.random() * 2 - 1) * jitterX;
+        const dy = (Math.random() * 2 - 1) * jitterY;
+        // 用 transform 定位到槽位中心：长文本不会偏移槽位
+        btn.style.left = `${slot.cx + dx}%`;
+        btn.style.top = `${slot.cy + dy}%`;
+        btn.style.transform = 'translate(-50%, -50%)';
         btn.addEventListener('click', () => finish(opt, btn));
         this._targetsEl.appendChild(btn);
-      }
+      });
 
       // 倒计时
       const lv = q.lv || 1;

@@ -15,6 +15,69 @@
 #
 #  默认目标：111.229.191.225（腾讯云 Ubuntu）
 #  依赖：本机有 ssh / scp（密码登录还需 sshpass）
+#
+# ============================================================
+#  线上环境速查（仅非敏感信息；密码 / Token / 私钥不要写这里！）
+# ------------------------------------------------------------
+#  服务器
+#    云厂商    : 腾讯云 · 轻量应用服务器
+#    公网 IP   : 111.229.191.225
+#    系统      : Ubuntu 24.04.4 LTS  (4C / 4G / 3M 带宽 / 40G SSD)
+#    SSH 用户  : ubuntu      （SSH 密码见 Obsidian 笔记，不入仓）
+#    Node      : v20.20.2
+#
+#  部署
+#    部署目录  : /opt/homework/
+#    应用属主  : homework:homework  （由 service 模式创建；update 模式不动）
+#    服务名    : systemd `homework.service`
+#    监听端口  : 8787  （腾讯云防火墙已放行）
+#    日志      : sudo journalctl -u homework -f
+#    AI 上游   : https://openrouter.ai/api/v1/chat/completions
+#    TTS       : 火山 豆包语音合成 2.0 (Seed-TTS 2.0)，Token 在 service 里
+#                （AppID 1599031079；resource_id 按 voice 前缀自动路由）
+#
+#  对外端点
+#    H5 入口   : https://taobinxian.cloud/app
+#                http://111.229.191.225:8787/app   （回退）
+#    健康检查  : https://taobinxian.cloud/
+#    AI 代理   : https://taobinxian.cloud/v1/chat/completions
+#    TTS 接口  : https://taobinxian.cloud/tts
+#    域名      : taobinxian.cloud  (帝思普注册，DNSPod 解析 @ + www
+#                → 111.229.191.225；2027-04-20 到期；HTTPS 已配)
+#
+#  推荐运维命令（本机执行；密码用 SSH_PASS 一次性环境变量传，禁止写脚本）
+#    SSH_PASS='<从笔记读取>' bash deploy.sh ubuntu              # 标准更新
+#    SSH_PASS='<从笔记读取>' bash deploy.sh ubuntu --no-seed    # 跳过 seed
+#    bash deploy.sh --check                                       # 无副作用健康检查
+#
+#  线上验证（部署后跑一遍）
+#    curl -sI https://taobinxian.cloud/static/app/main.js \
+#      | grep -iE '^(cache-control|etag):'
+#      # 期望: Cache-Control: public, max-age=300, must-revalidate
+#      #       ETag: W/"..."
+#    ETAG=$(curl -sI https://taobinxian.cloud/static/app/main.js \
+#      | awk -F': *' 'tolower($1)=="etag"{print $2}' | tr -d '\r\n')
+#    curl -sI -H "If-None-Match: $ETAG" \
+#      https://taobinxian.cloud/static/app/main.js | head -1
+#      # 期望: HTTP/1.1 304 Not Modified
+#    curl -s https://taobinxian.cloud/app \
+#      | grep -cE 'modulepreload|data-skeleton|prefers-reduced-motion|sk-bar'
+#      # 期望: ≥ 16
+#
+#  应急回滚
+#    A) 本地版本回退后重部署：
+#         git checkout <旧 commit> -- index.html proxy.js static/ lib/ test/
+#         SSH_PASS='<...>' bash deploy.sh ubuntu --no-seed
+#         git checkout HEAD -- .
+#    B) 单文件应急覆盖：
+#         SSH_PASS='<...>' sshpass -p "$SSH_PASS" scp <文件> \
+#           ubuntu@111.229.191.225:/tmp/
+#         SSH_PASS='<...>' sshpass -p "$SSH_PASS" ssh \
+#           ubuntu@111.229.191.225 \
+#           "sudo cp /tmp/<文件> /opt/homework/ && sudo systemctl restart homework"
+#
+#  ❗ 严禁在本文件写入：SSH 密码 / VOLC_TOKEN / OpenRouter Key / 任何私钥。
+#     这些信息只存：① Obsidian 笔记  ② 服务器上的 /etc/systemd/system/homework.service
 # ============================================================
 
 set -euo pipefail

@@ -2,22 +2,47 @@
 // 设计：所有效果都是无副作用的 DOM 注入 + 自动清理
 // 不依赖具体引擎；任何引擎传入 root（容器）和坐标即可触发
 
+// 系统级"减少动效"偏好（OS 设置 / 浏览器设置）。命中时全局禁强反馈，
+// 只保留 damageNumber / bigText 文字浮字（用 CSS @media 静态降级）。
+let REDUCED = false;
+try {
+  const mq = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)');
+  REDUCED = !!(mq && mq.matches);
+  if (mq && typeof mq.addEventListener === 'function') {
+    mq.addEventListener('change', e => { REDUCED = e.matches; });
+  }
+} catch (_) {}
+export function isReducedMotion() { return REDUCED; }
+
+// shake 目标：优先 #stage（关卡容器），避免给 body 加 transform
+// 触发整页 paint；非关卡场景（首页 / overlay）兜底回 body。
+function _shakeRoot() {
+  return (typeof document !== 'undefined' && document.getElementById('stage')) || document.body;
+}
+
 // ---------- 1. 屏幕震动 ----------
 let _shakeTimer = null;
+let _shakeRootEl = null;
 export function screenShake(intensity = 1, durationMs = 250) {
-  const root = document.body;
-  if (_shakeTimer) clearTimeout(_shakeTimer);
-  root.classList.remove('fx-shake-light', 'fx-shake-medium', 'fx-shake-heavy');
+  if (REDUCED) return;
+  const root = _shakeRoot();
+  if (_shakeTimer) {
+    clearTimeout(_shakeTimer);
+    if (_shakeRootEl) _shakeRootEl.classList.remove('fx-shake-light', 'fx-shake-medium', 'fx-shake-heavy');
+  }
+  _shakeRootEl = root;
   const cls = intensity >= 3 ? 'fx-shake-heavy' : intensity >= 2 ? 'fx-shake-medium' : 'fx-shake-light';
   root.classList.add(cls);
   _shakeTimer = setTimeout(() => {
     root.classList.remove(cls);
     _shakeTimer = null;
+    _shakeRootEl = null;
   }, durationMs);
 }
 
 // ---------- 2. 全屏闪光 ----------
 export function flashScreen(color = '#fff', durationMs = 120) {
+  if (REDUCED) return;
   const flash = document.createElement('div');
   flash.className = 'fx-flash';
   flash.style.background = color;
@@ -40,6 +65,7 @@ export function damageNumber(x, y, value, opts = {}) {
 // ---------- 4. Hitstop（凝帧）----------
 // 简化实现：通过给 root 加 class 让 transition 暂停 N ms
 export function hitstop(durationMs = 100) {
+  if (REDUCED) return;
   const root = document.body;
   root.classList.add('fx-hitstop');
   setTimeout(() => root.classList.remove('fx-hitstop'), durationMs);
@@ -47,6 +73,7 @@ export function hitstop(durationMs = 100) {
 
 // ---------- 5. 命中粒子（多方向飞溅）----------
 export function impactBurst(x, y, opts = {}) {
+  if (REDUCED) return;
   const count = opts.count || 8;
   const symbols = opts.symbols || ['✦', '✧', '★', '✺', '⚡'];
   const color = opts.color || '#ffcf4b';
@@ -70,6 +97,7 @@ export function impactBurst(x, y, opts = {}) {
 
 // ---------- 6. 击中冲击波（圆环扩散）----------
 export function impactRing(x, y, color = '#fff') {
+  if (REDUCED) return;
   const ring = document.createElement('div');
   ring.className = 'fx-ring';
   ring.style.left = x + 'px';
@@ -91,6 +119,7 @@ export function bigText(root, text, opts = {}) {
 
 // ---------- 8. 慢镜头（CSS 动画速率减慢）----------
 export function slowMotion(durationMs = 400) {
+  if (REDUCED) return;
   const root = document.body;
   root.classList.add('fx-slowmo');
   setTimeout(() => root.classList.remove('fx-slowmo'), durationMs);
@@ -99,6 +128,7 @@ export function slowMotion(durationMs = 400) {
 // ---------- 9. 命中冲击元素（短暂放大 + 亮）----------
 export function flinch(el, intensity = 1) {
   if (!el) return;
+  if (REDUCED) return;
   const cls = intensity >= 2 ? 'fx-flinch-strong' : 'fx-flinch';
   el.classList.add(cls);
   setTimeout(() => el.classList.remove(cls), 280);
@@ -107,6 +137,7 @@ export function flinch(el, intensity = 1) {
 // ---------- 10. 子弹时间投射物（带尾迹）----------
 export function projectile(fromEl, toEl, opts = {}) {
   if (!fromEl || !toEl) return Promise.resolve();
+  if (REDUCED) return Promise.resolve();
   const fr = fromEl.getBoundingClientRect();
   const tr = toEl.getBoundingClientRect();
   const fx = fr.left + fr.width / 2;
@@ -134,6 +165,7 @@ export function projectile(fromEl, toEl, opts = {}) {
 
 // ---------- 11. 拳轨残影（连续帧）----------
 export function trailImage(emoji, x, y) {
+  if (REDUCED) return;
   const t = document.createElement('div');
   t.className = 'fx-trail';
   t.textContent = emoji;

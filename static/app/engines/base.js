@@ -10,6 +10,22 @@
 //   requestExplain(q) -> Promise<{ text }> (AI 讲解)
 //   requestTTS(text) -> Promise (朗读)
 
+// 每题答完后到下一题前的等待节奏（保留打击感反馈但缩短）。
+// 答对短一点（吸下一题），答错略长（给"错"的反馈视觉时间）。
+// 可由 config.pacing 覆盖，例如 { correct: 220, wrong: 280 }。
+export const DEFAULT_PACING = Object.freeze({ correct: 280, wrong: 300 });
+
+// 错答惩罚递进 — 与 lib/level-damage.js 保持同步（薄镜像，前端无 require）。
+// 第 1 次 ~34% baseDmg、第 2 次 ~67%、第 3 次起 100%；给小学生前期容错。
+const PROGRESSIVE_MISS_MULTIPLIERS = Object.freeze([0.34, 0.67, 1]);
+export function progressiveCounterDamage(missCount, baseDmg) {
+  const n = Number.isFinite(missCount) ? Math.floor(missCount) : 1;
+  const idx = Math.min(Math.max(n - 1, 0), PROGRESSIVE_MISS_MULTIPLIERS.length - 1);
+  const m = PROGRESSIVE_MISS_MULTIPLIERS[idx];
+  const bd = Number.isFinite(baseDmg) ? baseDmg : 0;
+  return Math.max(1, Math.round(bd * m));
+}
+
 export class LevelEngine {
   constructor({ container, questions, callbacks = {}, config = {} }) {
     if (!container) throw new Error('LevelEngine: container is required');
@@ -18,6 +34,7 @@ export class LevelEngine {
     this.questions = questions;
     this.callbacks = callbacks;
     this.config = config;
+    this.pacing = { ...DEFAULT_PACING, ...(config.pacing || {}) };
     this.idx = 0;
     this.stats = { correct: 0, wrong: 0, started: false, ended: false };
     this._listeners = [];

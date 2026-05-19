@@ -8,7 +8,7 @@
 //  - 连续 3 题正确 → 必杀技动画 + 双倍伤害
 //  - Boss HP 50% / 25% 切换形态，反击伤害递增
 
-import { LevelEngine, isCorrect, makeChoiceOptions } from './base.js';
+import { LevelEngine, isCorrect, makeChoiceOptions, progressiveCounterDamage } from './base.js';
 import { confetti } from '../ui.js';
 import * as fx from '../fx.js';
 
@@ -209,7 +209,8 @@ export class FightingEngine extends LevelEngine {
     } else {
       this.combo = 0;
       this._comboN.textContent = 0;
-      const counterDmg = 8 * this.bossPhase;
+      // 错答扣血递进：前 2 次轻，第 3+ 次按 boss phase 满伤
+      const counterDmg = progressiveCounterDamage(this.stats.wrong, 8 * this.bossPhase);
 
       // 道具：守护盾 — 答错免伤害
       if (this.shieldRemain > 0) {
@@ -218,7 +219,7 @@ export class FightingEngine extends LevelEngine {
         fx.flashScreen('rgba(80,180,255,.4)', 80);
         fx.impactRing(r.left + r.width / 2, r.top + r.height / 2, '#6cdcff');
         fx.bigText(this.container, `🛡 守护盾抵挡 (剩 ${this.shieldRemain})`, { color: '#6cdcff', duration: 800 });
-        await new Promise(r => setTimeout(r, 380));
+        await new Promise(rs => setTimeout(rs, this.pacing.wrong));
         return;
       }
 
@@ -253,7 +254,7 @@ export class FightingEngine extends LevelEngine {
         }
       }
     }
-    await new Promise(r => setTimeout(r, 380));
+    await new Promise(r => setTimeout(r, correct ? this.pacing.correct : this.pacing.wrong));
   }
 
   async finish() {

@@ -2,23 +2,25 @@
 //
 // 玩法：
 //  - 题目选项 = 多个靶子，正确选项为靶心
-//  - 每题倒计时（lv1=15s, lv2=10s, lv3=6s）；超时算错
+//  - 每题倒计时（lv1=15s, lv2=10s, lv3=8s）；超时算错
 //  - 怪物从右侧推进，答错 / 超时怪物前进一格
-//  - 5 个怪物突破防线 = 关卡失败
+//  - 6 个怪物突破防线 = 关卡失败
 //  - 答对一题击杀一只靠近的怪物
 
 import { LevelEngine, isCorrect, makeChoiceOptions } from './base.js';
 import { confetti } from '../ui.js';
 import * as fx from '../fx.js';
 
-const LV_TIMES = { 1: 15, 2: 10, 3: 6 };
+// lv3 由 6s → 8s：小学生场景下 6s 节奏过紧 + 闪屏震屏放大焦虑
+const LV_TIMES = { 1: 15, 2: 10, 3: 8 };
+const INITIAL_DEFENSE = 6;
 
 const TPL = `
 <div class="shooting" id="bg-shooting">
   <div class="sh-top">
     <div class="sh-score">得分 <span class="sh-score-n">0</span></div>
     <div class="sh-time">⏱ <span class="sh-time-n">0</span></div>
-    <div class="sh-defense">防线 <span class="sh-def-n">5</span> / 5</div>
+    <div class="sh-defense">防线 <span class="sh-def-n">6</span> / 6</div>
   </div>
   <div class="sh-arena">
     <div class="sh-monsters"></div>
@@ -32,8 +34,10 @@ const TPL = `
 export class ShootingEngine extends LevelEngine {
   constructor(opts) {
     super(opts);
+    // 射击模式比 battle/fighting 节奏更快（场上还有移动怪物 + 倒计时）
+    this.pacing = { correct: 240, wrong: 260, ...(opts.config?.pacing || {}) };
     this.score = 0;
-    this.defense = 5;
+    this.defense = INITIAL_DEFENSE;
     this.monsters = []; // {el, distance: 0..5}
     this._timer = null;
     this._timeLeft = 0;
@@ -54,8 +58,8 @@ export class ShootingEngine extends LevelEngine {
       const q = this.current(); if (q) this.callbacks.requestTTS?.(q.q);
     });
 
-    // 初始化几只远处的怪物
-    for (let i = 0; i < 3; i++) this._spawnMonster();
+    // 初始化几只远处的怪物（3→2：开场强度降一档，给孩子缓冲）
+    for (let i = 0; i < 2; i++) this._spawnMonster();
   }
 
   _spawnMonster() {
@@ -215,7 +219,7 @@ export class ShootingEngine extends LevelEngine {
         this.shieldRemain--;
         fx.flashScreen('rgba(80,180,255,.4)', 80);
         fx.bigText(this.container, `🛡 守护盾抵挡 (剩 ${this.shieldRemain})`, { color: '#6cdcff', duration: 800 });
-        await new Promise(r => setTimeout(r, 250));
+        await new Promise(r => setTimeout(r, this.pacing.wrong));
         return;
       }
       // 错答 = 怪物前进 = 屏幕震动 + 红闪
@@ -224,7 +228,7 @@ export class ShootingEngine extends LevelEngine {
       this._advanceMonsters();
       if (Math.random() < 0.4 && this.monsters.length < 8) this._spawnMonster();
     }
-    await new Promise(r => setTimeout(r, 250));
+    await new Promise(r => setTimeout(r, correct ? this.pacing.correct : this.pacing.wrong));
   }
 
   async finish() {

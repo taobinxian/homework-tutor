@@ -4,6 +4,14 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
 <title>学霸奇遇记 · 小学生智能辅导冒险</title>
+<!-- 关键模块预下载（type=module 默认 defer，preload 让 HTTP 阶段并发拉取）-->
+<link rel="modulepreload" href="/static/app/main.js" />
+<link rel="modulepreload" href="/static/app/ui.js" />
+<link rel="modulepreload" href="/static/app/audio.js" />
+<link rel="modulepreload" href="/static/app/fx.js" />
+<link rel="modulepreload" href="/static/app/state.js" />
+<link rel="modulepreload" href="/static/app/engines/base.js" />
+<link rel="modulepreload" href="/static/app/engines/battle.js" />
 <style>
 /* ============== 主题变量（从原 index.html 保留） ============== */
 :root{
@@ -45,7 +53,7 @@ body{
 .pet-bar-fill{height:100%;background:linear-gradient(90deg,var(--c-good),var(--c-accent));transition:width .3s}
 .pet-exp{font-size:12px;color:var(--c-muted)}
 
-#stage{position:fixed;top:0;left:0;right:0;bottom:0;background:var(--grad-sky);z-index:50;display:none;overflow:auto;padding:50px 0 0}
+#stage{position:fixed;top:0;left:0;right:0;bottom:0;background:var(--grad-sky);z-index:50;display:none;overflow:auto;padding:50px 0 0;contain:layout paint}
 #stage.show{display:block}
 .btn-stage-back{position:fixed;top:50px;left:8px;z-index:60;background:rgba(0,0,0,.6);color:#fff;border:0;border-radius:10px;padding:8px 12px;cursor:pointer}
 
@@ -89,7 +97,7 @@ body{
 .shooting .sh-q{position:absolute;left:50%;top:30%;transform:translate(-50%,-50%);background:rgba(255,255,255,.18);padding:12px 18px;border-radius:14px;font-size:16px;backdrop-filter:blur(6px);text-align:center;max-width:90%;line-height:1.4;font-weight:500;color:#fff}
 .shooting .sh-tts{position:absolute;right:12px;top:12px;z-index:2}
 .shooting .sh-targets{position:absolute;inset:0}
-.shooting .sh-target{position:absolute;padding:10px 14px;background:linear-gradient(135deg,#ffaa44,#ff6633);color:#fff;border:0;border-radius:30px;cursor:pointer;font-size:13px;font-weight:bold;box-shadow:0 4px 12px rgba(255,100,0,.4);min-width:54px;min-height:54px;max-width:42%;line-height:1.2;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;transform:translate(-50%,-50%);animation:pulse 2s infinite}
+.shooting .sh-target{position:absolute;padding:10px 14px;background:linear-gradient(135deg,#ffaa44,#ff6633);color:#fff;border:0;border-radius:30px;cursor:pointer;font-size:13px;font-weight:bold;box-shadow:0 4px 12px rgba(255,100,0,.4);min-width:54px;min-height:60px;max-width:44%;line-height:1.25;text-align:center;white-space:normal;word-break:break-word;overflow:hidden;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;transform:translate(-50%,-50%);animation:pulse 2s infinite}
 .shooting .sh-target:hover{transform:translate(-50%,-50%) scale(1.1);z-index:3}
 .shooting .sh-target.answered{cursor:default;pointer-events:none;animation:none;opacity:.55}
 .shooting .sh-target.selected{opacity:1;transform:translate(-50%,-50%) scale(1.14);box-shadow:0 0 0 4px rgba(255,255,255,.28),0 8px 22px rgba(0,0,0,.35);z-index:4}
@@ -221,9 +229,9 @@ body{
 .fx-shake-medium{animation:shake-medium .35s}
 .fx-shake-heavy{animation:shake-heavy .5s}
 
-/* 全屏闪光 */
-.fx-flash{position:fixed;inset:0;background:#fff;z-index:9999;pointer-events:none;animation:flash-fade .12s ease-out forwards;mix-blend-mode:overlay}
-@keyframes flash-fade{0%{opacity:.85}100%{opacity:0}}
+/* 全屏闪光 — 去掉 mix-blend-mode: overlay（每帧都要走合成器混合，低端机贵），改纯 alpha */
+.fx-flash{position:fixed;inset:0;background:#fff;z-index:9999;pointer-events:none;animation:flash-fade .12s ease-out forwards;will-change:opacity}
+@keyframes flash-fade{0%{opacity:.55}100%{opacity:0}}
 
 /* 慢镜头（动画速率减半） */
 .fx-slowmo *{animation-duration:1.8s !important;transition-duration:.5s !important}
@@ -434,11 +442,50 @@ body{
 /* 关卡结果页 — 道具消耗提示 */
 .result-items{margin:8px 0;padding:8px 12px;background:rgba(255,207,75,.08);border-radius:10px;font-size:12px;color:var(--c-muted)}
 
+/* ============== 首屏骨架占位 ============== */
+.ls-row.sk{opacity:.65}
+.sk-bar{display:inline-block;height:18px;min-width:54px;border-radius:10px;background:linear-gradient(90deg,#252b6e 0%,#3a4090 50%,#252b6e 100%);background-size:200% 100%;animation:sk-shimmer 1.4s linear infinite}
+@keyframes sk-shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+[data-skeleton="1"] .btn-start[disabled]{opacity:.6;cursor:wait}
+
+/* ============== 无障碍：尊重系统 "减少动效" 偏好 ============== */
+@media (prefers-reduced-motion: reduce) {
+  /* 关闭所有打击感动画 / 过渡 */
+  .fx-shake-light, .fx-shake-medium, .fx-shake-heavy,
+  .fx-flash, .fx-damage, .fx-spark, .fx-ring,
+  .fx-big-text, .fx-flinch, .fx-flinch-strong,
+  .fx-proj, .fx-trail, .particle, .projectile,
+  .shooting .sh-monster, .shooting .sh-target,
+  .battle .arena .hero, .battle .arena .boss,
+  .fighting .ft-hero, .fighting .ft-boss,
+  .result-stars .rstar.pop, .result-emoji,
+  .daily-claim, .result-evolve {
+    animation: none !important;
+    transition: none !important;
+  }
+  /* 全屏闪光 / 粒子 / 圆环 / 拳轨 直接隐藏，避免视觉冲击 */
+  .fx-flash, .fx-spark, .fx-ring, .fx-trail, .projectile, .particle { display: none !important; }
+  /* slowmo 也回归正常速率 */
+  .fx-slowmo * { animation-duration: 0s !important; transition-duration: 0s !important; }
+  /* 首屏骨架的 shimmer 也停 */
+  .sk-bar { animation: none !important; background: #2d3375 !important; }
+}
+
 </style>
 </head>
 <body>
 <div id="topbar"></div>
-<div id="home"></div>
+<!-- 骨架屏：HTML 解析完即可见，避免 ESM 加载期间整页白屏。
+     main.js boot 后会用真实内容覆盖（renderLevelSelect 走 innerHTML 替换）。-->
+<div id="home" data-skeleton="1">
+  <h1 class="home-title">🎓 学霸奇遇记</h1>
+  <div class="ls-row sk"><span>年级</span><span class="sk-bar"></span><span class="sk-bar"></span><span class="sk-bar"></span></div>
+  <div class="ls-row sk"><span>科目</span><span class="sk-bar"></span><span class="sk-bar"></span></div>
+  <div class="ls-row sk"><span>难度</span><span class="sk-bar"></span><span class="sk-bar"></span></div>
+  <div class="ls-row sk"><span>玩法</span><span class="sk-bar"></span><span class="sk-bar"></span></div>
+  <div class="ls-prog">正在加载关卡数据…</div>
+  <button class="btn-start" disabled aria-busy="true">🚀 加载中…</button>
+</div>
 <div id="pet-area"></div>
 <div id="stage"></div>
 <div id="toast-wrap"></div>

@@ -5,7 +5,8 @@ const _ttsCache = new Map(); // text → Promise<blobURL>
 const _preloadQueue = [];
 let _preloadActive = 0;
 const _preloadMax = 1;
-const DEFAULT_PRELOAD_LIMIT = 0;
+// 前 2 题在 startLevel 时预热；首题朗读不再冷启动
+const DEFAULT_PRELOAD_LIMIT = 2;
 
 const _state = {
   enabled: true,

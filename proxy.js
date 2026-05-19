@@ -333,6 +333,22 @@ function handleTTS(req,res){
 }
 
 // ---------- 静态文件 ----------
+// 缓存策略：
+//   - .html       no-cache（始终回源；HTML 当前承载所有内联 CSS/骨架，必须最新）
+//   - 其他静态资源 max-age=300, must-revalidate + weak ETag
+//     5 分钟内零回源；过期后客户端用 If-None-Match 命中 304，省传输不省请求。
+//   未来文件名加 hash 后可升级到 max-age=31536000, immutable。
+function cacheHeadersFor(ext, stat){
+  if(ext === '.html' || ext === '.htm'){
+    return { 'Cache-Control': 'no-cache' };
+  }
+  const etag = 'W/"' + stat.size.toString(36) + '-' + Math.floor(stat.mtimeMs).toString(36) + '"';
+  return {
+    'Cache-Control': 'public, max-age=300, must-revalidate',
+    'ETag': etag,
+  };
+}
+
 function serveStatic(req,res,relPath){
   const safe=path.normalize(relPath).replace(/^(\.\.[\/\\])+/,'');
   // 兼容两种布局：repo 根（旧）与 repo/static/ 子目录（新模块化前端）
@@ -350,10 +366,15 @@ function serveStatic(req,res,relPath){
     fs.stat(full,(e,s)=>{
       if(e||!s.isFile()){ tryNext(i+1); return; }
       const ext=path.extname(full).toLowerCase();
+      const cacheHdr = cacheHeadersFor(ext, s);
+      if(cacheHdr.ETag && req.headers['if-none-match'] === cacheHdr.ETag){
+        res.writeHead(304, { ...CORS, ...cacheHdr });
+        return res.end();
+      }
       res.writeHead(200,{
         ...CORS,
         'Content-Type' : MIME[ext] || 'application/octet-stream',
-        'Cache-Control': 'no-cache',
+        ...cacheHdr,
       });
       fs.createReadStream(full).pipe(res);
     });

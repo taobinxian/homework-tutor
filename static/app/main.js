@@ -29,44 +29,47 @@ function persistSave() { saveJSON(SAVE_KEY, SAVE); }
 function refreshAll() { renderTopbar(); renderPet($('#pet-area'), SAVE); }
 
 // ---------- 顶部状态栏 ----------
+// 拆成 renderTopbar（构造 DOM + 绑监听，仅首次跑一次）与
+// refreshTopbarStats（只更数值与按钮文案，不动 DOM/监听）。
+// 答题路径（onCorrect/onWrong）只调 refreshTopbarStats，
+// 避免每答一题就重建整棵 topbar + 重绑 8 个 button listener。
 function renderTopbar() {
   const bar = $('#topbar');
   if (!bar) return;
-  const pet = petByExp(SAVE.exp || 0);
-  const next = nextPetThreshold(SAVE.exp || 0);
-  const progress = next ? Math.round(((SAVE.exp - pet.threshold) / (next - pet.threshold)) * 100) : 100;
+  if (bar.dataset.built === '1') { refreshTopbarStats(); return; }
   bar.innerHTML = `
     <div class="tb-left">
-      <span class="tb-pet" title="${pet.name} Lv ${pet.stage + 1} · 距下一阶段还需 ${next ? (next - SAVE.exp) : 0} EXP">
-        ${pet.emoji} <b>${pet.name}</b>
-        <span class="tb-mini-bar"><span style="width:${progress}%"></span></span>
+      <span class="tb-pet" id="tb-pet">
+        <span id="tb-pet-emoji"></span> <b id="tb-pet-name"></b>
+        <span class="tb-mini-bar"><span id="tb-pet-bar-fill" style="width:0%"></span></span>
       </span>
-      <span class="tb-exp">⚡ ${SAVE.exp}</span>
-      <span class="tb-gold">🪙 ${SAVE.gold || 0}</span>
-      <span class="tb-gem">💎 ${SAVE.gems || 0}</span>
-      ${(SAVE.streak || 0) > 0 ? `<span class="tb-streak" title="连续登录 ${SAVE.streak} 天">🔥 ${SAVE.streak}</span>` : ''}
+      <span class="tb-exp" id="tb-exp">⚡ 0</span>
+      <span class="tb-gold" id="tb-gold">🪙 0</span>
+      <span class="tb-gem" id="tb-gem">💎 0</span>
+      <span class="tb-streak" id="tb-streak" style="display:none"></span>
     </div>
     <div class="tb-right">
-      <button id="btn-voice" class="btn-mini" title="${isEnabled() ? '语音开' : '语音关'}">${isEnabled() ? '🔊' : '🔇'}</button>
-      <button id="btn-mute" class="btn-mini" title="${audio.isMuted() ? '音效关' : '音效开'}">${audio.isMuted() ? '🔕' : '🎵'}</button>
+      <button id="btn-voice" class="btn-mini">🔊</button>
+      <button id="btn-mute" class="btn-mini">🎵</button>
       <button id="btn-daily" class="btn-mini" title="每日任务">📋</button>
       <button id="btn-shop" class="btn-mini" title="商店">🛒</button>
-      <button id="btn-achv" class="btn-mini" title="成就">🏆 ${SAVE.achievements.length}/${totalAchievements()}</button>
+      <button id="btn-achv" class="btn-mini" title="成就"><span id="tb-achv-label">🏆 0/0</span></button>
       <button id="btn-photo" class="btn-mini">📷</button>
       <button id="btn-wrongbook" class="btn-mini">📚</button>
       <button id="btn-settings" class="btn-mini">⚙️</button>
     </div>
   `;
+  bar.dataset.built = '1';
   $('#btn-voice').addEventListener('click', () => {
     audio.sfxClick();
-    toggleVoice(); refreshAll();
+    toggleVoice(); refreshTopbarStats();
   });
   $('#btn-mute').addEventListener('click', () => {
     const newMuted = !audio.isMuted();
     audio.setMuted(newMuted);
     SAVE.prefs.muted = newMuted; persistSave();
     if (!newMuted) audio.sfxClick();
-    refreshAll();
+    refreshTopbarStats();
   });
   $('#btn-daily').addEventListener('click', () => { audio.sfxClick(); openDaily(); });
   $('#btn-shop').addEventListener('click', () => { audio.sfxClick(); openShop(); });
@@ -74,6 +77,47 @@ function renderTopbar() {
   $('#btn-photo').addEventListener('click', () => { audio.sfxClick(); openPhotoFlow(); });
   $('#btn-wrongbook').addEventListener('click', () => { audio.sfxClick(); openWrongbook(); });
   $('#btn-settings').addEventListener('click', () => { audio.sfxClick(); openSettings(); });
+  refreshTopbarStats();
+}
+
+function refreshTopbarStats() {
+  const bar = $('#topbar');
+  if (!bar) return;
+  if (bar.dataset.built !== '1') { renderTopbar(); return; }
+  const pet = petByExp(SAVE.exp || 0);
+  const next = nextPetThreshold(SAVE.exp || 0);
+  const progress = next ? Math.round(((SAVE.exp - pet.threshold) / (next - pet.threshold)) * 100) : 100;
+  const petEl = $('#tb-pet');
+  if (petEl) petEl.title = `${pet.name} Lv ${pet.stage + 1} · 距下一阶段还需 ${next ? (next - SAVE.exp) : 0} EXP`;
+  const emojiEl = $('#tb-pet-emoji'); if (emojiEl) emojiEl.textContent = pet.emoji;
+  const nameEl = $('#tb-pet-name'); if (nameEl) nameEl.textContent = pet.name;
+  const barFill = $('#tb-pet-bar-fill'); if (barFill) barFill.style.width = progress + '%';
+  const expEl = $('#tb-exp'); if (expEl) expEl.textContent = `⚡ ${SAVE.exp}`;
+  const goldEl = $('#tb-gold'); if (goldEl) goldEl.textContent = `🪙 ${SAVE.gold || 0}`;
+  const gemEl = $('#tb-gem'); if (gemEl) gemEl.textContent = `💎 ${SAVE.gems || 0}`;
+  const streakEl = $('#tb-streak');
+  if (streakEl) {
+    const s = SAVE.streak || 0;
+    if (s > 0) {
+      streakEl.textContent = `🔥 ${s}`;
+      streakEl.title = `连续登录 ${s} 天`;
+      streakEl.style.display = '';
+    } else {
+      streakEl.style.display = 'none';
+    }
+  }
+  const achvLabel = $('#tb-achv-label');
+  if (achvLabel) achvLabel.textContent = `🏆 ${SAVE.achievements.length}/${totalAchievements()}`;
+  const voiceBtn = $('#btn-voice');
+  if (voiceBtn) {
+    voiceBtn.textContent = isEnabled() ? '🔊' : '🔇';
+    voiceBtn.title = isEnabled() ? '语音开' : '语音关';
+  }
+  const muteBtn = $('#btn-mute');
+  if (muteBtn) {
+    muteBtn.textContent = audio.isMuted() ? '🔕' : '🎵';
+    muteBtn.title = audio.isMuted() ? '音效关' : '音效开';
+  }
 }
 
 // ---------- 关卡选择 UI ----------
@@ -344,13 +388,14 @@ async function startLevel() {
       onCorrect: q => {
         recordCorrect(SAVE, { exp: 5 });
         audio.sfxHit();
-        refreshAll();
+        // 答题路径只更 topbar 数值；不重建整棵 topbar、不动 pet-area
+        refreshTopbarStats();
         persistSave();
       },
       onWrong: () => {
         recordWrong(SAVE);
         audio.sfxWrong();
-        refreshAll();
+        refreshTopbarStats();
         persistSave();
       },
       onWrongAdd: async (q, userAnswer) => {

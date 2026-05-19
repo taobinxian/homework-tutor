@@ -3,7 +3,7 @@
 //
 // 题目集合与玩法解耦：传入任意 questions 数组都能跑
 
-import { LevelEngine, isCorrect } from './base.js';
+import { LevelEngine, isCorrect, progressiveCounterDamage } from './base.js';
 import { confetti, $ } from '../ui.js';
 import * as fx from '../fx.js';
 
@@ -183,11 +183,12 @@ export class BattleEngine extends LevelEngine {
         fx.flashScreen('rgba(80,180,255,.4)', 80);
         fx.impactRing(hx, hy, '#6cdcff');
         fx.bigText(this.container, `🛡 守护盾抵挡 (剩 ${this.shieldRemain})`, { color: '#6cdcff', duration: 800 });
-        await new Promise(r => setTimeout(r, 380));
+        await new Promise(r => setTimeout(r, this.pacing.wrong));
         return;
       }
 
-      // Boss 反击
+      // Boss 反击：错答扣血递进（前 2 次轻、第 3+ 次全量）
+      const counterDmg = progressiveCounterDamage(this.stats.wrong, 15);
       await fx.projectile(this._bossEl, this._heroEl, { emoji: '💢', size: 32, duration: 240 });
       const heroRect = this._heroEl.getBoundingClientRect();
       const hx = heroRect.left + heroRect.width / 2;
@@ -196,10 +197,10 @@ export class BattleEngine extends LevelEngine {
       fx.flashScreen('rgba(255,80,80,.45)', 80);
       fx.flinch(this._heroEl, 1);
       fx.impactBurst(hx, hy, { count: 6, symbols: ['💥', '✖'], color: '#ff6b6b' });
-      fx.damageNumber(hx, hy - 20, 15, { prefix: '-' });
+      fx.damageNumber(hx, hy - 20, counterDmg, { prefix: '-' });
       fx.screenShake(2);
 
-      this.playerHp = Math.max(0, this.playerHp - 15);
+      this.playerHp = Math.max(0, this.playerHp - counterDmg);
       this._pHp.style.width = this.playerHp + '%';
 
       if (this.playerHp <= 0) {
@@ -217,7 +218,7 @@ export class BattleEngine extends LevelEngine {
         }
       }
     }
-    await new Promise(r => setTimeout(r, 380));
+    await new Promise(r => setTimeout(r, correct ? this.pacing.correct : this.pacing.wrong));
   }
 
   async finish() {

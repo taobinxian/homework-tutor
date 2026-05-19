@@ -6,6 +6,8 @@ const assert = require('node:assert/strict');
 const {
   progressiveCounterDamage,
   PROGRESSIVE_MISS_MULTIPLIERS,
+  hpBarPercent,
+  reviveHp,
 } = require('../lib/level-damage.js');
 
 test('progressiveCounterDamage — 第 1/2/3 次错答按 ~34%/67%/100% 缩放', () => {
@@ -62,4 +64,22 @@ test('PROGRESSIVE_MISS_MULTIPLIERS — 单调非降', () => {
       `index ${i} (${PROGRESSIVE_MISS_MULTIPLIERS[i]}) < index ${i - 1} (${PROGRESSIVE_MISS_MULTIPLIERS[i - 1]})`);
   }
   assert.equal(PROGRESSIVE_MISS_MULTIPLIERS[PROGRESSIVE_MISS_MULTIPLIERS.length - 1], 1);
+});
+
+test('hpBarPercent — 血槽百分比使用 actual HP / max HP，而不是把 HP 当百分比', () => {
+  assert.equal(hpBarPercent(100, 200), 50);
+  assert.equal(hpBarPercent(50, 200), 25);
+  assert.equal(hpBarPercent(0, 200), 0);
+});
+
+test('hpBarPercent — clamp 到 0..100，非法 maxHP 回退到 100', () => {
+  assert.equal(hpBarPercent(125, 100), 100);
+  assert.equal(hpBarPercent(-5, 100), 0);
+  assert.equal(hpBarPercent(50, 0), 50);
+  assert.equal(hpBarPercent(50, undefined), 50);
+});
+
+test('reviveHp — 复活血量同样基于 max HP 计算', () => {
+  assert.equal(reviveHp(200), 100);
+  assert.equal(reviveHp(80), 40);
 });

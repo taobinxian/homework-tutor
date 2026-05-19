@@ -26,6 +26,19 @@ export function progressiveCounterDamage(missCount, baseDmg) {
   return Math.max(1, Math.round(bd * m));
 }
 
+export function hpBarPercent(currentHp, maxHp) {
+  const max = Number.isFinite(maxHp) && maxHp > 0 ? maxHp : 100;
+  const hp = Number.isFinite(currentHp) ? currentHp : 0;
+  const pct = (Math.min(Math.max(hp, 0), max) / max) * 100;
+  return Math.round(pct);
+}
+
+export function reviveHp(maxHp, ratio = 0.5) {
+  const max = Number.isFinite(maxHp) && maxHp > 0 ? maxHp : 100;
+  const r = Number.isFinite(ratio) && ratio > 0 ? ratio : 0.5;
+  return Math.max(1, Math.round(max * Math.min(r, 1)));
+}
+
 export class LevelEngine {
   constructor({ container, questions, callbacks = {}, config = {} }) {
     if (!container) throw new Error('LevelEngine: container is required');

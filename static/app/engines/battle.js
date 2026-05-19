@@ -3,7 +3,7 @@
 //
 // 题目集合与玩法解耦：传入任意 questions 数组都能跑
 
-import { LevelEngine, isCorrect, progressiveCounterDamage } from './base.js';
+import { LevelEngine, isCorrect, progressiveCounterDamage, hpBarPercent, reviveHp } from './base.js';
 import { confetti, $ } from '../ui.js';
 import * as fx from '../fx.js';
 
@@ -34,6 +34,7 @@ export class BattleEngine extends LevelEngine {
   constructor(opts) {
     super(opts);
     this.playerHp = opts.config?.playerHp ?? 100;
+    this.playerHpMax = opts.config?.playerHpMax ?? this.playerHp;
     this.bossHp = opts.config?.bossHp ?? 100;
     this.bossHpMax = this.bossHp;
     this.combo = 0;
@@ -54,6 +55,8 @@ export class BattleEngine extends LevelEngine {
     this._comboN = this.container.querySelector('.combo-n');
     this._pHp = this.container.querySelector('.p-hp');
     this._bHp = this.container.querySelector('.b-hp');
+    this._renderPlayerHp();
+    this._renderBossHp();
 
     this.container.querySelector('.btn-tts').addEventListener('click', () => {
       const q = this.current(); if (q) this.callbacks.requestTTS?.(q.q);
@@ -157,7 +160,7 @@ export class BattleEngine extends LevelEngine {
       fx.screenShake(isCombo ? 2 : 1);
 
       this.bossHp = Math.max(0, this.bossHp - dmg);
-      this._bHp.style.width = (this.bossHp / this.bossHpMax * 100) + '%';
+      this._renderBossHp();
 
       if (isCombo && this.combo % 3 === 0) {
         fx.bigText(this.container, `${this.combo} COMBO!`, { color: '#ffcf4b', duration: 900 });
@@ -200,15 +203,13 @@ export class BattleEngine extends LevelEngine {
       fx.damageNumber(hx, hy - 20, counterDmg, { prefix: '-' });
       fx.screenShake(2);
 
-      this.playerHp = Math.max(0, this.playerHp - counterDmg);
-      this._pHp.style.width = this.playerHp + '%';
+      this._setPlayerHp(this.playerHp - counterDmg);
 
       if (this.playerHp <= 0) {
         // 道具：复活卷
         if (this.reviveRemain > 0) {
           this.reviveRemain--;
-          this.playerHp = 50;
-          this._pHp.style.width = '50%';
+          this._setPlayerHp(reviveHp(this.playerHpMax));
           fx.flashScreen('rgba(255,207,75,.7)', 320);
           fx.bigText(this.container, '❤️ 凤凰复活!', { crit: true, color: '#ffcf4b', duration: 1400 });
           confetti(40);
@@ -229,6 +230,33 @@ export class BattleEngine extends LevelEngine {
       return { result: 'fail', stats: { maxCombo: this.maxCombo } };
     }
     return { result: 'complete', stats: { maxCombo: this.maxCombo } };
+  }
+
+  _setPlayerHp(nextHp) {
+    this.playerHp = Math.max(0, Math.min(nextHp, this.playerHpMax));
+    this._renderPlayerHp();
+  }
+
+  _renderPlayerHp() {
+    this._setHpFill(this._pHp, hpBarPercent(this.playerHp, this.playerHpMax));
+  }
+
+  _renderBossHp() {
+    this._setHpFill(this._bHp, hpBarPercent(this.bossHp, this.bossHpMax));
+  }
+
+  _setHpFill(el, pct) {
+    if (!el) return;
+    const width = pct + '%';
+    if (pct === 0) {
+      const prevTransition = el.style.transition;
+      el.style.transition = 'none';
+      el.style.width = width;
+      void el.offsetWidth;
+      el.style.transition = prevTransition;
+      return;
+    }
+    el.style.width = width;
   }
 
   _showHint() {

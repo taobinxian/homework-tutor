@@ -109,6 +109,14 @@ export async function createReviewLevel(payload) {
   });
 }
 
+// 主页"自由练习" finish 上报（让 BattleEngine 等也进家长日报）。
+export async function submitFreePractice(payload) {
+  return jsonRequest(`${BASE}/api/free-practice/finish`, {
+    method: 'POST',
+    body: JSON.stringify(payload || {}),
+  });
+}
+
 export async function addQuestion(payload) {
   return jsonRequest(`${BASE}/api/questions`, {
     method: 'POST',

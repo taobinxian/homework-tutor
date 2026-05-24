@@ -507,6 +507,24 @@ async function startLevel() {
                      : sel.engine === 'fighting' ? FightingEngine
                      : BattleEngine;
 
+  const sessionAnswers = []; // 主页练习答题日志（独立于引擎实现，统一通过 onCorrect/onWrong 收集）
+  const sessionStartedAt = Date.now();
+  const recordAnswer = (q, userAnswer, isCorrect) => {
+    sessionAnswers.push({
+      questionId: q?.id,
+      q: q?.q,
+      answer: q?.answer,
+      userAnswer,
+      isCorrect,
+      topic: q?.topic,
+      knowledgePoints: Array.isArray(q?.knowledgePoints) ? q.knowledgePoints : (q?.topic ? [q.topic] : []),
+      phase: 'main',
+      durationMs: 0,
+      type: q?.type || 'choice',
+      options: q?.options,
+    });
+  };
+
   const engine = new EngineClass({
     container: stage,
     questions,
@@ -514,13 +532,15 @@ async function startLevel() {
     callbacks: {
       onCorrect: q => {
         recordCorrect(SAVE, { exp: 5 });
+        recordAnswer(q, q?.answer, true);
         audio.sfxHit();
         // 答题路径只更 topbar 数值；不重建整棵 topbar、不动 pet-area
         refreshTopbarStats();
         persistSave();
       },
-      onWrong: () => {
+      onWrong: (q, userAnswer) => {
         recordWrong(SAVE);
+        recordAnswer(q, userAnswer, false);
         audio.sfxWrong();
         refreshTopbarStats();
         persistSave();
@@ -557,6 +577,15 @@ async function startLevel() {
         refreshAll();
 
         if (result === 'win' || result === 'complete') audio.sfxVictory(); else audio.sfxGameOver();
+
+        // 上报主页练习数据到后端（让家长日报覆盖此关）—— fire-and-forget，不阻塞结算面板。
+        const durationSec = Math.max(1, Math.round((Date.now() - sessionStartedAt) / 1000));
+        data.submitFreePractice({
+          user: SAVE.user,
+          grade: sel.grade, subject: sel.subject, semester: sel.semester, lv: sel.lv, engine: sel.engine,
+          result, correct: stats.correct ?? 0, wrong: stats.wrong ?? 0, durationSec,
+          answers: sessionAnswers,
+        }).catch(e => console.warn('free-practice 上报失败:', e));
 
         await showLevelResult({ result, stars, rewards, evolved, newAchv, stats, itemsUsed: itemRun.used });
 

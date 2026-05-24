@@ -18,6 +18,9 @@ import {
 import { BattleEngine } from './engines/battle.js';
 import { ShootingEngine } from './engines/shooting.js';
 import { FightingEngine } from './engines/fighting.js';
+import { KnowledgeShooterEngine } from './engines/knowledge-shooter.js';
+import { openCampaignMap as openCampaignMapUI } from './campaign.js';
+import { openDailyReport as openDailyReportUI } from './reports.js';
 
 const SAVE_KEY = 'scholar_odyssey_save_v1';
 const SAVE = migrateState(loadJSON(SAVE_KEY, null));
@@ -184,6 +187,10 @@ function renderLevelSelect() {
 
   home.innerHTML = `
     <h1 class="home-title">🎓 学霸奇遇记</h1>
+    <div class="campaign-entry">
+      <button id="btn-campaign" class="btn-start campaign">🪐 进入知识战场</button>
+      <button id="btn-report" class="btn-mini campaign-report">📊 家长日报</button>
+    </div>
     <div class="ls-row"><span>年级</span>${[1,2,3,4,5,6].map(g => btn('g', g, '年级' + g, sel.grade === g, false)).join('')}</div>
     <div class="ls-row"><span>科目</span>${SUBJECTS.map(s => btn('s', s.key, s.icon + ' ' + s.label, sel.subject === s.key, !isSubjectAvailable(sel.grade, s.key))).join('')}</div>
     <div class="ls-row"><span>难度</span>${[1,2,3].map(l => btn('l', l, '⭐'.repeat(l), sel.lv === l, !isLvAvailable(sel.grade, sel.subject, l))).join('')}</div>
@@ -211,6 +218,8 @@ function renderLevelSelect() {
     });
   });
   $('#btn-start').addEventListener('click', () => { audio.sfxLevelUp(); startLevel(); });
+  $('#btn-campaign')?.addEventListener('click', () => { audio.sfxLevelUp(); openCampaignMapUI(campaignCtx()); });
+  $('#btn-report')?.addEventListener('click', () => { audio.sfxClick(); openDailyReportUI(campaignCtx()); });
 
   // 道具槽位点击：移除已激活
   home.querySelectorAll('.it-slot').forEach(s => s.addEventListener('click', () => {
@@ -337,6 +346,123 @@ function openShop() {
   });
 }
 
+// ---------- 知识战场入口上下文 ----------
+function campaignCtx() {
+  return {
+    data, SAVE, audio, toast, ensureOverlay,
+    onSupplyComplete: startCampaignCombat,
+  };
+}
+
+async function startCampaignCombat(payload) {
+  const stage = $('#stage');
+  const level = payload.level;
+  const openingAnswers = payload.openingAnswers || [];
+  const preCorrect = openingAnswers.filter(a => a.isCorrect).length;
+  const preWrong = openingAnswers.length - preCorrect;
+  const openingCount = openingAnswers.length;
+  const combatQuestions = (payload.questions || []).slice(openingCount);
+  if (!combatQuestions.length) combatQuestions.push(...(payload.questions || []));
+
+  preloadBattle(combatQuestions);
+  stage.classList.add('show');
+  $('#home').style.display = 'none';
+
+  let submitChain = Promise.resolve();
+  const engine = new KnowledgeShooterEngine({
+    container: stage,
+    questions: combatQuestions,
+    config: {
+      level,
+      runId: payload.runId,
+      supplyConfig: payload.supplyConfig,
+      initialResources: payload.resources || payload.initialResources,
+      skipOpeningSupply: true,
+      preSupplyStats: { correct: preCorrect, wrong: preWrong },
+    },
+    callbacks: {
+      onCorrect: q => { recordCorrect(SAVE, { exp: 5 }); audio.sfxHit(); refreshTopbarStats(); persistSave(); },
+      onWrong: () => { recordWrong(SAVE); audio.sfxWrong(); refreshTopbarStats(); persistSave(); },
+      // 战役答题明细/错题/掌握度统一由 submitSupply 后端链路负责，避免重复写入。
+      onWrongAdd: async () => {},
+      onSupplyAnswer: async (answer, meta) => {
+        submitChain = submitChain.then(() => data.submitSupply({
+          runId: payload.runId,
+          phase: answer.phase || meta.phase || 'mid',
+          resources: meta.resources,
+          answers: [answer],
+        })).catch(e => console.warn('submitSupply failed:', e));
+        await submitChain;
+      },
+      onComplete: async ({ result, stats }) => {
+        await submitChain.catch(() => {});
+        const finish = await data.finishLevelRun({
+          user: SAVE.user,
+          runId: payload.runId,
+          levelId: level.id,
+          result,
+          correctCount: stats.correct ?? 0,
+          wrongCount: stats.wrong ?? 0,
+          durationSec: stats.durationSec || 0,
+          resources: stats.resources || {},
+          combatStats: stats.combatStats || {},
+        }).catch(e => ({ stars: 0, rewards: { exp: 0, gold: 0, gems: 0 }, error: e.message }));
+        const stars = finish.stars ?? 0;
+        const rewards = finish.rewards || { exp: 0, gold: 0, gems: 0 };
+        SAVE.exp += rewards.exp || 0;
+        SAVE.gold = (SAVE.gold || 0) + (rewards.gold || 0);
+        SAVE.gems = (SAVE.gems || 0) + (rewards.gems || 0);
+        recordLevelComplete(SAVE, { grade: 1, subject: 'math', lv: 1, engine: 'knowledge-shooter', result, correct: stats.correct ?? 0, wrong: stats.wrong ?? 0 });
+        const evolved = evolveIfNeeded(SAVE);
+        const newAchv = checkAchievements(SAVE);
+        persistSave(); refreshAll();
+        if (result === 'win' || result === 'complete') audio.sfxVictory(); else audio.sfxGameOver();
+        if (finish.error) toast('⚠️ 结算入库失败：' + finish.error, 2600);
+        const report = await data.fetchDailyReport({ user: SAVE.user }).catch(() => null);
+        await showCampaignResult({ result, stars, rewards, evolved, newAchv, stats, finish, report });
+        engine.destroy(); // 卸 document keydown 监听 + 清 timers，避免重玩时按键重复触发
+        stage.classList.remove('show'); stage.innerHTML = '';
+        $('#home').style.display = ''; renderLevelSelect();
+      },
+      requestExplain: explainQuestion,
+      requestTTS: text => { speak(text, { interrupt: true }); return Promise.resolve(); },
+    },
+  });
+  engine.run().catch(err => { console.error('knowledge shooter error:', err); toast('知识战场错误: ' + err.message); });
+}
+
+function showCampaignResult({ result, stars, rewards, evolved, newAchv, stats, report }) {
+  return new Promise(resolve => {
+    const overlay = ensureOverlay('campaign-result');
+    const isWin = result === 'win' || result === 'complete';
+    const total = (stats.correct || 0) + (stats.wrong || 0);
+    const accuracy = total ? Math.round((stats.correct || 0) * 100 / total) : 0;
+    const mastery = report?.summary?.mastery || [];
+    overlay.innerHTML = `<div class="result-panel ${isWin ? 'win' : 'lose'}">
+      <div class="result-emoji">${isWin ? '🏆' : '💔'}</div>
+      <div class="result-title">${isWin ? '知识战场通关!' : '挑战失败'}</div>
+      <div class="result-stars">${[1,2,3].map(i => `<span class="rstar ${i <= stars ? 'on' : ''}">★</span>`).join('')}</div>
+      <div class="result-stats">正确率 <b>${accuracy}%</b> · 答对 <b>${stats.correct || 0}</b> · 错题 <b>${stats.wrong || 0}</b> · 击破 <b>${stats.combatStats?.kills || 0}</b></div>
+      <div class="result-rewards">
+        <div class="rrew"><span>⚡</span><b>+${rewards.exp || 0}</b><i>经验</i></div>
+        <div class="rrew"><span>🪙</span><b>+${rewards.gold || 0}</b><i>金币</i></div>
+        <div class="rrew"><span>💎</span><b>+${rewards.gems || 0}</b><i>宝石</i></div>
+      </div>
+      <div class="report-weak"><b>错题沉淀：</b>${stats.wrongQuestions?.length || 0} 题已进入错题链路</div>
+      <div class="report-suggest"><b>掌握度：</b>${mastery.length ? mastery.slice(0,3).map(m => `${m.topic} ${Math.round((m.mastery || 0) * 100)}%`).join('、') : '暂无掌握度变化'}</div>
+      ${evolved ? `<div class="result-evolve">🎊 宠物进化为 <b>${evolved.emoji} ${evolved.name}</b>！</div>` : ''}
+      ${newAchv.length ? `<div class="result-achv"><div class="rachv-title">🏅 新成就</div>${newAchv.map(a => `<div class="rachv">${a.icon} ${a.name}<small>${a.desc}</small></div>`).join('')}</div>` : ''}
+      <div class="result-actions">
+        <button class="btn-back">返回主页</button>
+        <button class="btn-report-open">查看日报</button>
+      </div>
+    </div>`;
+    overlay.classList.add('show');
+    overlay.querySelector('.btn-back').onclick = () => { audio.sfxClick(); overlay.classList.remove('show'); resolve(); };
+    overlay.querySelector('.btn-report-open').onclick = () => { audio.sfxClick(); overlay.classList.remove('show'); openDailyReportUI(campaignCtx()); resolve(); };
+  });
+}
+
 // ---------- 启动关卡 ----------
 async function startLevel() {
   toast('🎲 抽题中…');
@@ -376,7 +502,8 @@ async function startLevel() {
   stage.classList.add('show');
   $('#home').style.display = 'none';
 
-  const EngineClass = sel.engine === 'shooting' ? ShootingEngine
+  const EngineClass = sel.engine === 'knowledge-shooter' ? KnowledgeShooterEngine
+                     : sel.engine === 'shooting' ? ShootingEngine
                      : sel.engine === 'fighting' ? FightingEngine
                      : BattleEngine;
 

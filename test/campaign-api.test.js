@@ -219,3 +219,60 @@ test('boss level seed exposes knowledgeShield.questionCount for engine multi-que
     db.close();
   } finally { cleanup(file); }
 });
+
+test('daily report buckets runs by Beijing day (UTC+8), not UTC day', () => {
+  const file = tmpDb();
+  try {
+    const db = openDb(file); initSchema(db); seedCampaigns(db);
+    // 一条 UTC 2026-05-23 17:30 finished = 北京 2026-05-24 01:30 → 应归到北京 5-24
+    db.prepare(`INSERT INTO level_runs (run_id, user, level_id, result, stars, correct_count, wrong_count, duration_sec, finished_at)
+                VALUES ('run-tz-a', 'u-tz', 'g1-math-upper-1-1', 'win', 3, 5, 0, 60, '2026-05-23 17:30:00')`).run();
+    // 一条 UTC 2026-05-24 17:30 finished = 北京 2026-05-25 01:30 → 不在北京 5-24 的日报
+    db.prepare(`INSERT INTO level_runs (run_id, user, level_id, result, stars, correct_count, wrong_count, duration_sec, finished_at)
+                VALUES ('run-tz-b', 'u-tz', 'g1-math-upper-1-1', 'win', 3, 2, 0, 30, '2026-05-24 17:30:00')`).run();
+    const r = reportsApi.dailyReportHandler(db, { user: 'u-tz', date: '2026-05-24' });
+    assert.equal(r.body.runs.length, 1, '北京日 2026-05-24 应当只包含 run-tz-a（UTC 5-23 17:30 = 北京 5-24 01:30）');
+    assert.equal(r.body.summary.questionCount, 5);
+    assert.equal(r.body.summary.correctCount, 5);
+    db.close();
+  } finally { cleanup(file); }
+});
+
+test('summary 全 0 时 suggestion 不再用历史 mastery 兜底，给鼓励语', () => {
+  const file = tmpDb();
+  try {
+    const db = openDb(file); initSchema(db); seedCampaigns(db);
+    db.prepare(`INSERT INTO knowledge_mastery (user, grade, subject, semester, topic, attempts, correct, wrong, mastery)
+                VALUES ('u-empty', 1, 'math', 'upper', '0的认识', 3, 1, 2, 0.4)`).run();
+    const r = reportsApi.dailyReportHandler(db, { user: 'u-empty', date: '2026-05-24' });
+    assert.equal(r.body.summary.questionCount, 0);
+    assert.equal(r.body.summary.levelsCompleted, 0);
+    assert.ok(!/继续巩固/.test(r.body.summary.suggestion),
+      `今日 0 活动时 suggestion 不应引用历史 mastery，实际：${r.body.summary.suggestion}`);
+    assert.ok(/(开始|挑战|战场|加油|学习)/.test(r.body.summary.suggestion),
+      `应该是鼓励文案，实际：${r.body.summary.suggestion}`);
+    // mastery 字段仍保留（关卡结算页 showCampaignResult 要用历史掌握度）
+    assert.equal(r.body.summary.mastery[0].topic, '0的认识');
+    db.close();
+  } finally { cleanup(file); }
+});
+
+test('summary 暴露 learningSeconds，短时长不再 round 成 0 分钟', () => {
+  const file = tmpDb();
+  try {
+    const db = openDb(file); initSchema(db); seedCampaigns(db);
+    // 25 秒就赢的关，旧逻辑 round(25/60)=0 分钟 → 与 levelsCompleted=1 互相矛盾。
+    // 用相对当前时间的 UTC 时戳，配合北京日切换。
+    db.prepare(`INSERT INTO level_runs (run_id, user, level_id, result, stars, correct_count, wrong_count, duration_sec, finished_at)
+                VALUES ('run-short', 'u-short', 'g1-math-upper-1-1', 'win', 3, 5, 0, 25, datetime('now', '-2 hours'))`).run();
+    const today = new Date(Date.now() + 8 * 3600 * 1000).toISOString().slice(0, 10);
+    const r = reportsApi.dailyReportHandler(db, { user: 'u-short', date: today });
+    assert.equal(r.body.summary.levelsCompleted, 1);
+    assert.equal(r.body.summary.learningSeconds, 25, 'learningSeconds 字段应当存在且 = 25');
+    // learningMinutes 仍保留向后兼容
+    assert.equal(typeof r.body.summary.learningMinutes, 'number');
+    // byDay 也要带 learningSeconds
+    assert.equal(r.body.summary.byDay[0].learningSeconds, 25);
+    db.close();
+  } finally { cleanup(file); }
+});

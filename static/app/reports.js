@@ -6,6 +6,13 @@ function esc(s) {
   return String(s ?? '').replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
 }
 
+function formatDuration(seconds, minutes) {
+  const s = Number(seconds || 0);
+  if (s <= 0) return '0 分钟';
+  if (s < 60) return `${s} 秒`;
+  return `${Number(minutes ?? Math.round(s / 60))} 分钟`;
+}
+
 function renderMetrics(s = {}) {
   return `<div class="report-metrics">
     <div><b>${s.questionCount || 0}</b><span>答题数</span></div>
@@ -29,11 +36,12 @@ function renderBody(report, mode) {
   const s = report.summary || {};
   const period = report.period || {};
   const title = mode === 'weekly' ? `近 7 日（${period.startDate || ''} ~ ${period.endDate || ''}）` : '今日';
+  const duration = formatDuration(s.learningSeconds, s.learningMinutes);
   const dayRows = mode === 'weekly' && s.byDay?.length
-    ? `<div class="report-runs"><b>每日趋势：</b>${s.byDay.map(d => `<div>${d.date} · ${d.questionCount} 题 · 正确率 ${d.questionCount ? Math.round(d.correctCount * 100 / d.questionCount) : 0}% · ${d.learningMinutes || 0} 分钟</div>`).join('')}</div>`
+    ? `<div class="report-runs"><b>每日趋势：</b>${s.byDay.map(d => `<div>${d.date} · ${d.questionCount} 题 · 正确率 ${d.questionCount ? Math.round(d.correctCount * 100 / d.questionCount) : 0}% · ${formatDuration(d.learningSeconds, d.learningMinutes)}</div>`).join('')}</div>`
     : '';
   return `
-    <p>${title}学习 <b>${s.learningMinutes || 0}</b> 分钟，完成 <b>${s.levelsCompleted || 0}</b> 个知识战场关卡。</p>
+    <p>${title}学习 <b>${duration}</b>，完成 <b>${s.levelsCompleted || 0}</b> 个知识战场关卡。</p>
     ${renderMetrics(s)}
     ${renderWeakTopics(s.weakTopics || [])}
     <div class="report-suggest">${esc(s.suggestion || '继续保持。')}</div>

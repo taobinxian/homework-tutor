@@ -7,10 +7,11 @@
     "start": "node proxy.js",
     "test": "node --test 'test/*.test.js'",
     "db:migrate": "node scripts/db-migrate.js",
-    "db:seed": "npm run db:seed:curriculum && npm run db:seed:legacy && npm run db:seed:generators",
+    "db:seed": "npm run db:seed:curriculum && npm run db:seed:legacy && npm run db:seed:generators && npm run db:seed:campaigns",
     "db:seed:curriculum": "node scripts/db-seed-curriculum.js",
     "db:seed:legacy": "node scripts/db-seed-legacy.js",
     "db:seed:generators": "node scripts/db-seed-generators.js",
+    "db:seed:campaigns": "node scripts/db-seed-campaigns.js",
     "coverage": "node scripts/coverage.js",
     "validate:bank": "node scripts/validate-question-bank.js"
   },

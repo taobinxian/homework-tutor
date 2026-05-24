@@ -47,6 +47,9 @@ try {
 }
 const wrongbookApi = require('./lib/wrongbook-api');
 const questionsApi  = require('./lib/questions-api');
+const campaignApi   = require('./lib/campaign-api');
+const levelApi      = require('./lib/level-api');
+const reportsApi    = require('./lib/reports-api');
 const localTts      = require('./lib/local-tts');
 
 const PORT            = parseInt(process.env.PORT || '8787', 10);
@@ -455,6 +458,49 @@ const server = http.createServer((req,res)=>{
     return res.end(JSON.stringify(r.body));
   }
 
+  // ---------- 知识战场：战役 / 关卡 / 报告 API ----------
+  if(pathname.startsWith('/api/campaign') && db){
+    const u=new URL(req.url,'http://x');
+    const query=Object.fromEntries(u.searchParams.entries());
+    const writeJSON=(status,body)=>{res.writeHead(status,{...CORS,'Content-Type':'application/json; charset=utf-8'});res.end(JSON.stringify(body));};
+    if(req.method==='GET' && pathname==='/api/campaign/map'){
+      const r=campaignApi.mapHandler(db,query); return writeJSON(r.status,r.body);
+    }
+    if(req.method==='GET' && pathname==='/api/campaign/level'){
+      const r=campaignApi.detailHandler(db,query); return writeJSON(r.status,r.body);
+    }
+  }
+  if(pathname.startsWith('/api/levels') && db){
+    const writeJSON=(status,body)=>{res.writeHead(status,{...CORS,'Content-Type':'application/json; charset=utf-8'});res.end(JSON.stringify(body));};
+    if(req.method==='POST' && pathname==='/api/levels/start'){
+      return readBody(req).then(buf=>levelApi.startHandler(db,JSON.parse(buf.toString('utf-8'))))
+        .then(r=>writeJSON(r.status,r.body)).catch(e=>writeJSON(400,{error:e.message}));
+    }
+    if(req.method==='POST' && pathname==='/api/levels/supply/submit'){
+      return readBody(req).then(buf=>levelApi.submitSupplyHandler(db,JSON.parse(buf.toString('utf-8'))))
+        .then(r=>writeJSON(r.status,r.body)).catch(e=>writeJSON(400,{error:e.message}));
+    }
+    if(req.method==='POST' && pathname==='/api/levels/finish'){
+      return readBody(req).then(buf=>levelApi.finishHandler(db,JSON.parse(buf.toString('utf-8'))))
+        .then(r=>writeJSON(r.status,r.body)).catch(e=>writeJSON(400,{error:e.message}));
+    }
+  }
+  if(pathname.startsWith('/api/reports') && db){
+    const u=new URL(req.url,'http://x');
+    const query=Object.fromEntries(u.searchParams.entries());
+    const writeJSON=(status,body)=>{res.writeHead(status,{...CORS,'Content-Type':'application/json; charset=utf-8'});res.end(JSON.stringify(body));};
+    if(req.method==='GET' && pathname==='/api/reports/daily'){
+      const r=reportsApi.dailyReportHandler(db,query); return writeJSON(r.status,r.body);
+    }
+    if(req.method==='GET' && pathname==='/api/reports/weekly'){
+      const r=reportsApi.weeklyReportHandler(db,query); return writeJSON(r.status,r.body);
+    }
+    if(req.method==='POST' && pathname==='/api/reports/review-level'){
+      return readBody(req).then(buf=>reportsApi.createReviewLevelHandler(db,JSON.parse(buf.toString('utf-8'))))
+        .then(r=>writeJSON(r.status,r.body)).catch(e=>writeJSON(400,{error:e.message}));
+    }
+  }
+
   // ---------- 错题库 API ----------
   if(pathname.startsWith('/api/wrongbook') && db){
     const u=new URL(req.url,'http://x');
@@ -491,7 +537,7 @@ const server = http.createServer((req,res)=>{
   }
 
   res.writeHead(404,{...CORS,'Content-Type':'text/plain; charset=utf-8'});
-  res.end('404\n可用路由：GET /、GET /app、POST /v1/chat/completions、GET /tts、/api/wrongbook\n');
+  res.end('404\n可用路由：GET /、GET /app、POST /v1/chat/completions、GET /tts、/api/questions、/api/campaign/map、/api/campaign/level、/api/levels/start、/api/levels/supply/submit、/api/levels/finish、/api/reports/daily、/api/reports/weekly、/api/reports/review-level、/api/wrongbook\n');
 });
 
 server.listen(PORT,BIND,()=>{

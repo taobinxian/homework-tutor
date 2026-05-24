@@ -60,6 +60,55 @@ export async function fetchAvailability() {
   return jsonRequest(`${BASE}/api/questions/availability`);
 }
 
+// ========== 知识战场 / 战役关卡 ==========
+
+export async function fetchCampaignMap({ user = 'default', grade = 1, subject = 'math', semester = 'upper' } = {}) {
+  const params = new URLSearchParams({ user, grade: String(grade), subject, semester });
+  return jsonRequest(`${BASE}/api/campaign/map?${params}`);
+}
+
+export async function startCampaignLevel(payload) {
+  return jsonRequest(`${BASE}/api/levels/start`, {
+    method: 'POST',
+    body: JSON.stringify(payload || {}),
+  });
+}
+
+export async function submitSupply(payload) {
+  return jsonRequest(`${BASE}/api/levels/supply/submit`, {
+    method: 'POST',
+    body: JSON.stringify(payload || {}),
+  });
+}
+
+export async function finishLevelRun(payload) {
+  return jsonRequest(`${BASE}/api/levels/finish`, {
+    method: 'POST',
+    body: JSON.stringify(payload || {}),
+  });
+}
+
+export const finishCampaignLevel = finishLevelRun;
+
+export async function fetchDailyReport({ user = 'default', date } = {}) {
+  const params = new URLSearchParams({ user });
+  if (date) params.set('date', date);
+  return jsonRequest(`${BASE}/api/reports/daily?${params}`);
+}
+
+export async function fetchWeeklyReport({ user = 'default', endDate } = {}) {
+  const params = new URLSearchParams({ user });
+  if (endDate) params.set('endDate', endDate);
+  return jsonRequest(`${BASE}/api/reports/weekly?${params}`);
+}
+
+export async function createReviewLevel(payload) {
+  return jsonRequest(`${BASE}/api/reports/review-level`, {
+    method: 'POST',
+    body: JSON.stringify(payload || {}),
+  });
+}
+
 export async function addQuestion(payload) {
   return jsonRequest(`${BASE}/api/questions`, {
     method: 'POST',

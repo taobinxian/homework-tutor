@@ -12,3 +12,12 @@ models/
 
 # Coverage baseline (regenerated locally)
 .coverage-baseline.json
+
+# agent-handoff: 本地配置含 chat-id，不入仓
+.agent-handoff/config.env
+
+# git worktree 工作树（其他分支的隔离 checkout）
+.worktrees/
+
+# 本地 agent 协调脚本（含个人 chat id / 路径）
+.agent-handoff/notify-*.sh

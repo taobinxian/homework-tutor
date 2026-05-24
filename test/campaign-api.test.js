@@ -276,3 +276,83 @@ test('summary 暴露 learningSeconds，短时长不再 round 成 0 分钟', () =
     db.close();
   } finally { cleanup(file); }
 });
+
+test('主页练习 (/api/free-practice/finish) 写入 level_runs / answers / mastery，并出现在家长日报', () => {
+  const file = tmpDb();
+  try {
+    const db = openDb(file); initSchema(db); seedCampaigns(db);
+    const freeApi = require('../lib/free-practice-api');
+    const r = freeApi.finishHandler(db, {
+      user: 'u-free',
+      grade: 1, subject: 'math', semester: 'upper', lv: 1, engine: 'battle',
+      result: 'win',
+      correct: 4, wrong: 1, durationSec: 90,
+      answers: [
+        { questionId: 'fp1', q: '1+1=?', answer: '2', userAnswer: '2', isCorrect: true, topic: '5以内加法', durationMs: 1200 },
+        { questionId: 'fp2', q: '0+0=?', answer: '0', userAnswer: '0', isCorrect: true, topic: '0的认识', durationMs: 800 },
+        { questionId: 'fp3', q: '3+2=?', answer: '5', userAnswer: '6', isCorrect: false, topic: '5以内加法', durationMs: 2000 },
+        { questionId: 'fp4', q: '2+1=?', answer: '3', userAnswer: '3', isCorrect: true, topic: '5以内加法', durationMs: 1500 },
+        { questionId: 'fp5', q: '4+0=?', answer: '4', userAnswer: '4', isCorrect: true, topic: '0的认识', durationMs: 1100 },
+      ],
+    });
+    assert.equal(r.status, 200);
+    assert.ok(r.body.runId.startsWith('run-free-'));
+    assert.equal(r.body.stars, 2); // accuracy = 4/5 = 0.8 → 2 stars
+
+    const run = db.prepare("SELECT level_id, result, correct_count, wrong_count, duration_sec FROM level_runs WHERE run_id=?").get(r.body.runId);
+    assert.equal(run.level_id, 'free-g1-math-lv1-battle');
+    assert.equal(run.result, 'win');
+    assert.equal(run.correct_count, 4);
+    assert.equal(run.wrong_count, 1);
+    assert.equal(run.duration_sec, 90);
+
+    const ansCount = db.prepare('SELECT COUNT(*) c FROM level_run_answers WHERE run_id=?').get(r.body.runId).c;
+    assert.equal(ansCount, 5);
+
+    const m1 = db.prepare("SELECT attempts, correct, wrong FROM knowledge_mastery WHERE user=? AND topic=?").get('u-free', '5以内加法');
+    assert.equal(m1.attempts, 3);
+    assert.equal(m1.correct, 2);
+    assert.equal(m1.wrong, 1);
+    const m2 = db.prepare("SELECT attempts, correct FROM knowledge_mastery WHERE user=? AND topic=?").get('u-free', '0的认识');
+    assert.equal(m2.attempts, 2);
+    assert.equal(m2.correct, 2);
+
+    const wrongCount = db.prepare("SELECT COUNT(*) c FROM wrong_questions WHERE user=?").get('u-free').c;
+    assert.equal(wrongCount, 1, '错题本应只收 1 条 (fp3)');
+
+    const today = new Date(Date.now() + 8 * 3600 * 1000).toISOString().slice(0, 10);
+    const daily = reportsApi.dailyReportHandler(db, { user: 'u-free', date: today });
+    assert.equal(daily.body.summary.levelsCompleted, 1);
+    assert.equal(daily.body.summary.questionCount, 5);
+    assert.equal(daily.body.summary.correctCount, 4);
+    assert.equal(daily.body.summary.wrongCount, 1);
+    assert.equal(daily.body.summary.learningSeconds, 90);
+    db.close();
+  } finally { cleanup(file); }
+});
+
+test('weakTopics 从题级 topic 聚合，主页练习的薄弱点也能显示', () => {
+  const file = tmpDb();
+  try {
+    const db = openDb(file); initSchema(db); seedCampaigns(db);
+    const freeApi = require('../lib/free-practice-api');
+    freeApi.finishHandler(db, {
+      user: 'u-weak', grade: 1, subject: 'math', semester: 'upper', lv: 1, engine: 'battle',
+      result: 'complete', correct: 0, wrong: 3, durationSec: 60,
+      answers: [
+        { questionId: 'w1', q: '2+3=?', answer: '5', userAnswer: '4', isCorrect: false, topic: '5以内加法' },
+        { questionId: 'w2', q: '1+4=?', answer: '5', userAnswer: '6', isCorrect: false, topic: '5以内加法' },
+        { questionId: 'w3', q: '0+0=?', answer: '0', userAnswer: '1', isCorrect: false, topic: '0的认识' },
+      ],
+    });
+    const today = new Date(Date.now() + 8 * 3600 * 1000).toISOString().slice(0, 10);
+    const daily = reportsApi.dailyReportHandler(db, { user: 'u-weak', date: today });
+    const wt = daily.body.summary.weakTopics;
+    assert.ok(wt.length >= 2, `weakTopics 应至少 2 个，实际 ${JSON.stringify(wt)}`);
+    const byTopic = Object.fromEntries(wt.map(x => [x.topic, x.wrongCount]));
+    assert.equal(byTopic['5以内加法'], 2);
+    assert.equal(byTopic['0的认识'], 1);
+    assert.equal(wt[0].topic, '5以内加法'); // 按错题数降序
+    db.close();
+  } finally { cleanup(file); }
+});

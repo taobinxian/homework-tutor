@@ -50,6 +50,7 @@ const questionsApi  = require('./lib/questions-api');
 const campaignApi   = require('./lib/campaign-api');
 const levelApi      = require('./lib/level-api');
 const reportsApi    = require('./lib/reports-api');
+const freePracticeApi = require('./lib/free-practice-api');
 const localTts      = require('./lib/local-tts');
 
 const PORT            = parseInt(process.env.PORT || '8787', 10);
@@ -500,6 +501,12 @@ const server = http.createServer((req,res)=>{
         .then(r=>writeJSON(r.status,r.body)).catch(e=>writeJSON(400,{error:e.message}));
     }
   }
+  // ---------- 主页"自由练习" finish（让 BattleEngine 等非战役入口也进家长日报）----------
+  if(pathname==='/api/free-practice/finish' && db && req.method==='POST'){
+    const writeJSON=(status,body)=>{res.writeHead(status,{...CORS,'Content-Type':'application/json; charset=utf-8'});res.end(JSON.stringify(body));};
+    return readBody(req).then(buf=>freePracticeApi.finishHandler(db,JSON.parse(buf.toString('utf-8'))))
+      .then(r=>writeJSON(r.status,r.body)).catch(e=>writeJSON(400,{error:e.message}));
+  }
 
   // ---------- 错题库 API ----------
   if(pathname.startsWith('/api/wrongbook') && db){
@@ -537,7 +544,7 @@ const server = http.createServer((req,res)=>{
   }
 
   res.writeHead(404,{...CORS,'Content-Type':'text/plain; charset=utf-8'});
-  res.end('404\n可用路由：GET /、GET /app、POST /v1/chat/completions、GET /tts、/api/questions、/api/campaign/map、/api/campaign/level、/api/levels/start、/api/levels/supply/submit、/api/levels/finish、/api/reports/daily、/api/reports/weekly、/api/reports/review-level、/api/wrongbook\n');
+  res.end('404\n可用路由：GET /、GET /app、POST /v1/chat/completions、GET /tts、/api/questions、/api/campaign/map、/api/campaign/level、/api/levels/start、/api/levels/supply/submit、/api/levels/finish、/api/free-practice/finish、/api/reports/daily、/api/reports/weekly、/api/reports/review-level、/api/wrongbook\n');
 });
 
 server.listen(PORT,BIND,()=>{

@@ -185,7 +185,8 @@ health_check() {
 
   c_b "🩺 TTS → /tts?text=你好"
   local code size
-  read -r code size < <(curl -s -m 10 -o /dev/null -w "%{http_code} %{size_download}" "${BASE}/tts?text=你好&voice=zf_xiaoxiao")
+  local tts_probe_text="%E4%BD%A0%E5%A5%BD"
+  read -r code size < <(curl -s -m 10 -o /dev/null -w "%{http_code} %{size_download}" "${BASE}/tts?text=${tts_probe_text}&voice=zf_xiaoxiao")
   if [[ "$code" == "200" && "$size" -gt 1000 ]]; then
     c_g "   ✅ TTS HTTP 200, ${size} bytes"
   else

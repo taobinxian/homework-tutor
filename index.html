@@ -150,100 +150,6 @@ body{
 .fighting .ft-move-l{font-size:11px;color:var(--c-muted)}
 .fighting .ft-move-o{font-size:14px}
 
-/* ============== 响应式: 平板 (≥768px) ============== */
-@media (min-width: 768px) {
-  #home{max-width:680px;padding:60px 28px 28px}
-  .home-title{font-size:32px}
-  .ls-row{padding:10px 14px}
-  .ls-btn{padding:9px 14px;font-size:14px}
-  .battle, .shooting, .fighting{max-width:760px;padding:18px}
-  .battle .arena, .fighting .ft-arena{flex-basis:220px}
-  .battle .arena .hero, .battle .arena .boss{font-size:74px}
-  .fighting .ft-hero, .fighting .ft-boss{font-size:96px}
-  .battle .q-text{font-size:20px}
-  .fighting .ft-q{font-size:18px}
-  .battle .q-options{grid-template-columns:1fr 1fr;gap:12px}
-  .battle .q-opt{font-size:16px;min-height:56px}
-  .fighting .ft-moves{grid-template-columns:1fr 1fr;gap:12px}
-  .fighting .ft-move{min-height:72px}
-}
-
-/* ============== 响应式: 桌面 (≥1024px) ============== */
-@media (min-width: 1024px) {
-  #stage{padding:60px 0 0}
-  .btn-stage-back{top:60px;left:16px}
-  #home{max-width:1120px;padding:68px 36px 36px}
-  .home-title{font-size:38px;margin:18px 0 28px}
-  .campaign-entry{display:grid;grid-template-columns:minmax(260px,2fr) repeat(5,minmax(96px,1fr));gap:12px;align-items:stretch}
-  .campaign-entry .btn-start,.campaign-entry .btn-mini{width:100%;height:48px;margin:0;font-size:15px}
-  .ls-row{display:grid;grid-template-columns:72px repeat(auto-fit,minmax(92px,1fr));gap:10px;padding:12px 16px;align-items:center}
-  .ls-row>span{min-width:0;font-size:15px;font-weight:600;color:var(--c-accent)}
-  .ls-btn{min-height:40px;font-size:15px}
-  .it-row{grid-template-columns:72px repeat(4,minmax(120px,1fr))}
-  .it-row .it-shop-link{margin-left:0;justify-self:end;align-self:center}
-  .camp-panel,.camp-detail,.report-panel{max-width:1040px;width:min(1040px,calc(100vw - 80px));padding:24px;max-height:82vh}
-  .supply-panel{max-width:920px;width:min(920px,calc(100vw - 80px));padding:24px}
-  .shop-panel{max-width:1040px;width:min(1040px,calc(100vw - 80px))}
-  .achv-panel{max-width:900px;width:min(900px,calc(100vw - 80px))}
-  .inv-panel{max-width:760px;width:min(760px,calc(100vw - 80px))}
-  .wb-panel,.ph-panel,.st-panel{max-width:720px;width:min(720px,calc(100vw - 80px))}
-  .daily-panel{max-width:640px;width:min(640px,calc(100vw - 80px))}
-  .camp-levels{grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
-  .camp-detail-grid{grid-template-columns:repeat(4,1fr)}
-  .report-metrics{grid-template-columns:repeat(3,1fr)}
-  .report-weak-list{grid-template-columns:repeat(auto-fit,minmax(240px,1fr))}
-  .shop-grid{grid-template-columns:repeat(auto-fill,minmax(220px,1fr))}
-  .achv-grid{grid-template-columns:repeat(auto-fill,minmax(170px,1fr))}
-  .battle, .shooting, .fighting{max-width:1100px;padding:24px}
-  .ks{max-width:1100px;padding:24px}
-  .battle .battle-top, .fighting .ft-top{gap:24px}
-  .battle .arena, .fighting .ft-arena{flex-basis:260px}
-  .battle .arena .hero, .battle .arena .boss{font-size:90px}
-  .fighting .ft-hero, .fighting .ft-boss{font-size:110px}
-  .battle .q-text{font-size:22px}
-  .fighting .ft-q{font-size:20px;padding:18px}
-  .battle .q-options{grid-template-columns:repeat(4, 1fr);gap:14px}
-  .battle .q-opt{font-size:17px;min-height:64px}
-  .fighting .ft-moves{grid-template-columns:repeat(4, 1fr);gap:14px}
-  .fighting .ft-move{min-height:88px}
-  .fighting .ft-move-k{font-size:22px}
-  .fighting .ft-move-l{font-size:12px}
-  .fighting .ft-move-o{font-size:16px}
-  .shooting .sh-arena{min-height:480px}
-  .shooting .sh-q{font-size:20px}
-  .shooting .sh-target{font-size:16px;min-width:64px;min-height:64px}
-}
-
-/* ============== 响应式: 大桌面 (≥1440px) ============== */
-@media (min-width: 1440px) {
-  #home{max-width:1240px}
-  .camp-panel,.camp-detail,.report-panel,.shop-panel{max-width:1160px;width:min(1160px,calc(100vw - 112px))}
-  .battle, .shooting, .fighting,.ks{max-width:1180px}
-}
-
-/* ============== 响应式: 手机 (<768px) ============== */
-@media (max-width: 767px) {
-  #topbar{height:auto;min-height:44px;justify-content:center;align-content:center;flex-wrap:wrap;padding:6px 8px;gap:6px;overflow:visible}
-  #topbar .tb-left,#topbar .tb-right{flex:1 1 100%;max-width:100%;justify-content:center;flex-wrap:wrap;gap:6px;font-size:12px}
-  #topbar .btn-mini{padding:6px 8px;min-width:32px}
-  #topbar .tb-pet b,#topbar .tb-mini-bar{display:none}
-  #home{padding-top:96px}
-  .campaign-entry .btn-mini{font-size:13px;padding-left:8px;padding-right:8px}
-  .ls-row{overflow:hidden}
-  .ls-btn{white-space:normal;min-width:0}
-  .camp-detail-grid,.report-metrics,.ph-grid,.st-presets{grid-template-columns:1fr}
-}
-
-/* ============== 响应式: 小手机 (<360px) ============== */
-@media (max-width: 359px) {
-  .battle, .shooting, .fighting{padding:10px}
-  .battle .battle-top, .fighting .ft-top{gap:8px}
-  .battle .arena .hero, .battle .arena .boss, .fighting .ft-arena .ft-hero, .fighting .ft-arena .ft-boss{font-size:48px}
-  .battle .q-text, .fighting .ft-q{font-size:15px}
-  .battle .q-opt, .fighting .ft-move{padding:10px;font-size:13px}
-  .fighting .ft-vs{font-size:14px}
-}
-
 /* Toast */
 #toast-wrap{position:fixed;top:60px;left:50%;transform:translateX(-50%);z-index:1000;display:flex;flex-direction:column;gap:6px;pointer-events:none}
 .toast{background:rgba(0,0,0,.85);color:#fff;padding:10px 16px;border-radius:14px;font-size:14px;animation:toast-in .25s ease-out;backdrop-filter:blur(8px)}
@@ -489,6 +395,100 @@ body{
 
 /* 关卡结果页 — 道具消耗提示 */
 .result-items{margin:8px 0;padding:8px 12px;background:rgba(255,207,75,.08);border-radius:10px;font-size:12px;color:var(--c-muted)}
+
+/* ============== 响应式: 平板 (≥768px) ============== */
+@media (min-width: 768px) {
+  #home{max-width:680px;padding:60px 28px 28px}
+  .home-title{font-size:32px}
+  .ls-row{padding:10px 14px}
+  .ls-btn{padding:9px 14px;font-size:14px}
+  .battle, .shooting, .fighting{max-width:760px;padding:18px}
+  .battle .arena, .fighting .ft-arena{flex-basis:220px}
+  .battle .arena .hero, .battle .arena .boss{font-size:74px}
+  .fighting .ft-hero, .fighting .ft-boss{font-size:96px}
+  .battle .q-text{font-size:20px}
+  .fighting .ft-q{font-size:18px}
+  .battle .q-options{grid-template-columns:1fr 1fr;gap:12px}
+  .battle .q-opt{font-size:16px;min-height:56px}
+  .fighting .ft-moves{grid-template-columns:1fr 1fr;gap:12px}
+  .fighting .ft-move{min-height:72px}
+}
+
+/* ============== 响应式: 桌面 (≥1024px) ============== */
+@media (min-width: 1024px) {
+  #stage{padding:60px 0 0}
+  .btn-stage-back{top:60px;left:16px}
+  #home{max-width:1120px;padding:68px 36px 36px}
+  .home-title{font-size:38px;margin:18px 0 28px}
+  .campaign-entry{display:grid;grid-template-columns:minmax(260px,2fr) repeat(5,minmax(96px,1fr));gap:12px;align-items:stretch}
+  .campaign-entry .btn-start,.campaign-entry .btn-mini{width:100%;height:48px;margin:0;font-size:15px}
+  .ls-row{display:grid;grid-template-columns:72px repeat(auto-fit,minmax(92px,1fr));gap:10px;padding:12px 16px;align-items:center}
+  .ls-row>span{min-width:0;font-size:15px;font-weight:600;color:var(--c-accent)}
+  .ls-btn{min-height:40px;font-size:15px}
+  .it-row{grid-template-columns:72px repeat(4,minmax(120px,1fr))}
+  .it-row .it-shop-link{margin-left:0;justify-self:end;align-self:center}
+  .camp-panel,.camp-detail,.report-panel{max-width:1040px;width:min(1040px,calc(100vw - 80px));padding:24px;max-height:82vh}
+  .supply-panel{max-width:920px;width:min(920px,calc(100vw - 80px));padding:24px}
+  .shop-panel{max-width:1040px;width:min(1040px,calc(100vw - 80px))}
+  .achv-panel{max-width:900px;width:min(900px,calc(100vw - 80px))}
+  .inv-panel{max-width:760px;width:min(760px,calc(100vw - 80px))}
+  .wb-panel,.ph-panel,.st-panel{max-width:720px;width:min(720px,calc(100vw - 80px))}
+  .daily-panel{max-width:640px;width:min(640px,calc(100vw - 80px))}
+  .camp-levels{grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .camp-detail-grid{grid-template-columns:repeat(4,1fr)}
+  .report-metrics{grid-template-columns:repeat(3,1fr)}
+  .report-weak-list{grid-template-columns:repeat(auto-fit,minmax(240px,1fr))}
+  .shop-grid{grid-template-columns:repeat(auto-fill,minmax(220px,1fr))}
+  .achv-grid{grid-template-columns:repeat(auto-fill,minmax(170px,1fr))}
+  .battle, .shooting, .fighting{max-width:1100px;padding:24px}
+  .ks{max-width:1100px;padding:24px}
+  .battle .battle-top, .fighting .ft-top{gap:24px}
+  .battle .arena, .fighting .ft-arena{flex-basis:260px}
+  .battle .arena .hero, .battle .arena .boss{font-size:90px}
+  .fighting .ft-hero, .fighting .ft-boss{font-size:110px}
+  .battle .q-text{font-size:22px}
+  .fighting .ft-q{font-size:20px;padding:18px}
+  .battle .q-options{grid-template-columns:repeat(4, 1fr);gap:14px}
+  .battle .q-opt{font-size:17px;min-height:64px}
+  .fighting .ft-moves{grid-template-columns:repeat(4, 1fr);gap:14px}
+  .fighting .ft-move{min-height:88px}
+  .fighting .ft-move-k{font-size:22px}
+  .fighting .ft-move-l{font-size:12px}
+  .fighting .ft-move-o{font-size:16px}
+  .shooting .sh-arena{min-height:480px}
+  .shooting .sh-q{font-size:20px}
+  .shooting .sh-target{font-size:16px;min-width:64px;min-height:64px}
+}
+
+/* ============== 响应式: 大桌面 (≥1440px) ============== */
+@media (min-width: 1440px) {
+  #home{max-width:1240px}
+  .camp-panel,.camp-detail,.report-panel,.shop-panel{max-width:1160px;width:min(1160px,calc(100vw - 112px))}
+  .battle, .shooting, .fighting,.ks{max-width:1180px}
+}
+
+/* ============== 响应式: 手机 (<768px) ============== */
+@media (max-width: 767px) {
+  #topbar{height:auto;min-height:44px;justify-content:center;align-content:center;flex-wrap:wrap;padding:6px 8px;gap:6px;overflow:visible}
+  #topbar .tb-left,#topbar .tb-right{flex:1 1 100%;max-width:100%;justify-content:center;flex-wrap:wrap;gap:6px;font-size:12px}
+  #topbar .btn-mini{padding:6px 8px;min-width:32px}
+  #topbar .tb-pet b,#topbar .tb-mini-bar{display:none}
+  #home{padding-top:96px}
+  .campaign-entry .btn-mini{font-size:13px;padding-left:8px;padding-right:8px}
+  .ls-row{overflow:hidden}
+  .ls-btn{white-space:normal;min-width:0}
+  .camp-detail-grid,.report-metrics,.ph-grid,.st-presets{grid-template-columns:1fr}
+}
+
+/* ============== 响应式: 小手机 (<360px) ============== */
+@media (max-width: 359px) {
+  .battle, .shooting, .fighting{padding:10px}
+  .battle .battle-top, .fighting .ft-top{gap:8px}
+  .battle .arena .hero, .battle .arena .boss, .fighting .ft-arena .ft-hero, .fighting .ft-arena .ft-boss{font-size:48px}
+  .battle .q-text, .fighting .ft-q{font-size:15px}
+  .battle .q-opt, .fighting .ft-move{padding:10px;font-size:13px}
+  .fighting .ft-vs{font-size:14px}
+}
 
 /* ============== 首屏骨架占位 ============== */
 .ls-row.sk{opacity:.65}

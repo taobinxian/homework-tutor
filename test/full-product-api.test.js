@@ -79,6 +79,23 @@ test('real finished run completes bounty and repeat complete/claim remain idempo
   assert.equal(db.prepare("SELECT qty FROM player_inventory WHERE user=? AND item_type='currency' AND item_id='gold'").get('u').qty, goldQty);
 });
 
+
+test('claimed bounty can generate a fresh active bounty for a later weak cycle', () => {
+  const db = memdb();
+  seedWrongs(db);
+  const [first] = full.generateBounties(db, { user:'u' });
+  submitRealRun(db);
+  const claim = full.claimBountyHandler(db, first.id, { user:'u' });
+  assert.equal(claim.status, 200);
+  assert.equal(db.prepare('SELECT status FROM bounty_tasks WHERE id=?').get(first.id).status, 'claimed');
+
+  addOne(db, 'u', { q:'3+4=?', answer:'7', userAnswer:'8', topic:'进位加法', grade:1, subject:'math', semester:'upper', knowledgePoints:['加法'], lv:1, source:'test' });
+  const [second] = full.generateBounties(db, { user:'u', source:'repeat-cycle' });
+  assert.equal(second.status, 'active');
+  assert.notEqual(second.id, first.id);
+  assert.equal(db.prepare("SELECT COUNT(*) AS c FROM bounty_tasks WHERE user='u' AND topic='进位加法'").get().c, 2);
+});
+
 test('growth summary creates mastery power, starter collection and knowledge base', () => {
   const db = memdb();
   updateMastery(db, { user:'u', grade:1, subject:'math', semester:'upper', answers:[

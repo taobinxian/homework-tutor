@@ -337,7 +337,7 @@ test('weakTopics 从题级 topic 聚合，主页练习的薄弱点也能显示',
     const db = openDb(file); initSchema(db); seedCampaigns(db);
     const freeApi = require('../lib/free-practice-api');
     freeApi.finishHandler(db, {
-      user: 'u-weak', grade: 1, subject: 'math', semester: 'upper', lv: 1, engine: 'battle',
+      user: 'u-weak', grade: 3, subject: 'english', semester: 'lower', lv: 1, engine: 'battle',
       result: 'complete', correct: 0, wrong: 3, durationSec: 60,
       answers: [
         { questionId: 'w1', q: '2+3=?', answer: '5', userAnswer: '4', isCorrect: false, topic: '5以内加法' },
@@ -353,6 +353,10 @@ test('weakTopics 从题级 topic 聚合，主页练习的薄弱点也能显示',
     assert.equal(byTopic['5以内加法'], 2);
     assert.equal(byTopic['0的认识'], 1);
     assert.equal(wt[0].topic, '5以内加法'); // 按错题数降序
+    assert.deepEqual(
+      { grade: wt[0].grade, subject: wt[0].subject, semester: wt[0].semester },
+      { grade: 3, subject: 'english', semester: 'lower' }
+    );
     db.close();
   } finally { cleanup(file); }
 });

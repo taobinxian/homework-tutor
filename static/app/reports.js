@@ -24,7 +24,7 @@ function renderMetrics(s = {}) {
 function renderWeakTopics(weakTopics = []) {
   if (!weakTopics.length) return '<div class="report-weak"><b>薄弱点：</b>暂无明显薄弱点</div>';
   return `<div class="report-weak"><b>薄弱点：</b><div class="report-weak-list">${weakTopics.map(x => `
-    <button class="report-review" data-topic="${esc(x.topic)}">🧩 ${esc(x.topic)}（错 ${x.wrongCount}）· 生成复习副本</button>
+    <button class="report-review" data-topic="${esc(x.topic)}" data-grade="${esc(x.grade || 1)}" data-subject="${esc(x.subject || 'math')}" data-semester="${esc(x.semester || 'upper')}">🧩 ${esc(x.topic)}（错 ${x.wrongCount}）· 生成复习副本</button>
   `).join('')}</div></div>`;
 }
 
@@ -74,7 +74,13 @@ export async function openDailyReport(ctx) {
         btn.disabled = true;
         btn.textContent = `生成「${topic}」复习副本中…`;
         try {
-          const res = await data.createReviewLevel({ user: SAVE.user, topic, grade: 1, subject: 'math', semester: 'upper' });
+          const res = await data.createReviewLevel({
+            user: SAVE.user,
+            topic,
+            grade: Number(btn.dataset.grade || SAVE.grade || 1),
+            subject: btn.dataset.subject || SAVE.subject || 'math',
+            semester: btn.dataset.semester || SAVE.semester || 'upper',
+          });
           overlay.classList.remove('show');
           toast?.(`已生成复习副本：${topic}`, 1400);
           openCampaignLevelDetail(ctx, res.level, overlay);

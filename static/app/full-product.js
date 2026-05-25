@@ -1,5 +1,8 @@
 function esc(s) { return String(s ?? '').replace(/[&<>\"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '\"': '&quot;' }[ch])); }
 function pct(n) { return Math.round(Number(n || 0) * 100); }
+function learnerContext(SAVE = {}) {
+  return { grade: Number(SAVE.grade || 1), subject: SAVE.subject || 'math', semester: SAVE.semester || 'upper' };
+}
 
 export async function openMonsterAtlas(ctx) {
   const { data, SAVE, audio, ensureOverlay, toast } = ctx;
@@ -22,7 +25,7 @@ export async function openMonsterAtlas(ctx) {
     }).join('')}</div>` : '<div class="inv-empty">目前没有错题怪兽。继续冒险，遇到错题也不用怕，它会变成可战胜的挑战。</div>';
     body.querySelectorAll('.monster-review').forEach(btn => btn.onclick = async () => {
       audio.sfxClick();
-      try { await data.createReviewLevel({ user: SAVE.user, topic: btn.dataset.topic, grade: 1, subject: 'math', semester: 'upper' }); toast?.('已生成复习副本'); }
+      try { await data.createReviewLevel({ user: SAVE.user, topic: btn.dataset.topic, ...learnerContext(SAVE) }); toast?.('已生成复习副本'); }
       catch (e) { toast?.('生成失败：' + e.message); }
     });
     body.querySelectorAll('.monster-bounty').forEach(btn => btn.onclick = () => { audio.sfxClick(); toast?.('从悬赏任务面板进入挑战'); openBountyBoard(ctx); });
@@ -37,17 +40,26 @@ export async function openBountyBoard(ctx) {
   overlay.querySelector('.camp-close').onclick = () => { audio.sfxClick(); overlay.classList.remove('show'); };
   const body = overlay.querySelector('.report-body');
   try {
-    const bounties = await data.fetchBounties({ user: SAVE.user, status: 'active' });
+    const bounties = await data.fetchBounties({ user: SAVE.user, status: 'all' });
     body.innerHTML = bounties.length ? bounties.map(b => `<div class="wb-item">
-      <div class="wb-q">🎯 ${esc(b.topic)} · ${esc(b.difficulty)}</div>
-      <div class="wb-meta">目标：${b.target.minQuestions || 5} 题，正确率 ≥ ${pct(b.target.minAccuracy || .8)}%</div>
+      <div class="wb-q">${b.status === 'completed' ? '✅' : b.status === 'claimed' ? '🎁' : '🎯'} ${esc(b.topic)} · ${esc(b.difficulty)}</div>
+      <div class="wb-meta">状态：${esc(b.status)} · 目标：${b.target.minQuestions || 5} 题，正确率 ≥ ${pct(b.target.minAccuracy || .8)}%</div>
       <div class="wb-ans">奖励：🪙${b.reward.gold || 0} · ${(b.reward.items || []).map(i => esc(i.name)).join('、')}</div>
-      <button class="bounty-review" data-topic="${esc(b.topic)}">进入复习副本</button>
+      ${b.status === 'completed'
+        ? `<button class="bounty-claim" data-id="${esc(b.id)}">领取奖励</button>`
+        : b.status === 'active'
+          ? `<button class="bounty-review" data-topic="${esc(b.topic)}">进入复习副本</button>`
+          : '<span class="wb-meta">奖励已领取</span>'}
     </div>`).join('') : '<div class="inv-empty">暂无悬赏。日报识别到薄弱点或错题累计后会自动出现。</div>';
     body.querySelectorAll('.bounty-review').forEach(btn => btn.onclick = async () => {
       audio.sfxClick();
-      try { await data.createReviewLevel({ user: SAVE.user, topic: btn.dataset.topic, grade: 1, subject: 'math', semester: 'upper' }); toast?.('复习副本已准备好，请到地图/复习入口挑战'); }
+      try { await data.createReviewLevel({ user: SAVE.user, topic: btn.dataset.topic, ...learnerContext(SAVE) }); toast?.('复习副本已准备好，请到地图/复习入口挑战'); }
       catch (e) { toast?.('复习副本生成失败：' + e.message); }
+    });
+    body.querySelectorAll('.bounty-claim').forEach(btn => btn.onclick = async () => {
+      audio.sfxClick();
+      try { await data.claimBounty(btn.dataset.id, { user: SAVE.user }); toast?.('悬赏奖励已领取'); openBountyBoard(ctx); }
+      catch (e) { toast?.('领取失败：' + e.message); }
     });
   } catch (e) { body.textContent = '悬赏加载失败：' + e.message; }
 }

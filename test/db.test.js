@@ -105,6 +105,20 @@ test('initSchema is idempotent (running twice does not throw or duplicate)', () 
   }
 });
 
+test('initSchema uses bounty cycle uniqueness instead of status uniqueness', () => {
+  const { db, file } = tmpDb();
+  try {
+    initSchema(db);
+    const cols = tableInfo(db, 'bounty_tasks').map(c => c.name);
+    assert.ok(cols.includes('cycle'), 'bounty_tasks should contain cycle column');
+    const sql = db.prepare(`SELECT sql FROM sqlite_master WHERE type='table' AND name='bounty_tasks'`).get().sql;
+    assert.match(sql, /UNIQUE\s*\(user, topic, task_type, cycle\)/i);
+    assert.doesNotMatch(sql, /UNIQUE\s*\(user, topic, task_type, status\)/i);
+  } finally {
+    db.close(); fs.unlinkSync(file);
+  }
+});
+
 test('initSchema preserves existing wrong_questions data when adding lv column', () => {
   const { db, file } = tmpDb();
   try {

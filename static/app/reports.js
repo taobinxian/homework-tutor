@@ -24,7 +24,7 @@ function renderMetrics(s = {}) {
 function renderWeakTopics(weakTopics = []) {
   if (!weakTopics.length) return '<div class="report-weak"><b>薄弱点：</b>暂无明显薄弱点</div>';
   return `<div class="report-weak"><b>薄弱点：</b><div class="report-weak-list">${weakTopics.map(x => `
-    <button class="report-review" data-topic="${esc(x.topic)}">🧩 ${esc(x.topic)}（错 ${x.wrongCount}）· 生成复习副本</button>
+    <button class="report-review" data-topic="${esc(x.topic)}" data-grade="${esc(x.grade || 1)}" data-subject="${esc(x.subject || 'math')}" data-semester="${esc(x.semester || 'upper')}">🧩 ${esc(x.topic)}（错 ${x.wrongCount}）· 生成复习副本</button>
   `).join('')}</div></div>`;
 }
 
@@ -44,7 +44,9 @@ function renderBody(report, mode) {
     <p>${title}学习 <b>${duration}</b>，完成 <b>${s.levelsCompleted || 0}</b> 个知识战场关卡。</p>
     ${renderMetrics(s)}
     ${renderWeakTopics(s.weakTopics || [])}
+    ${report.recommendedBounties?.length ? `<div class="report-weak"><b>报告反哺悬赏：</b>${report.recommendedBounties.map(b => `🎯 ${esc(b.topic)} · ${esc(b.difficulty)}`).join('、')}</div>` : ''}
     <div class="report-suggest">${esc(s.suggestion || '继续保持。')}</div>
+    <div class="camp-actions"><button class="report-create-bounty">🎯 生成复习悬赏</button><button class="report-create-praise">💌 发表扬卡</button><button class="report-create-boss">👾 出 Boss 题</button></div>
     ${dayRows}
     ${renderRuns(report.runs || [])}
   `;
@@ -72,7 +74,13 @@ export async function openDailyReport(ctx) {
         btn.disabled = true;
         btn.textContent = `生成「${topic}」复习副本中…`;
         try {
-          const res = await data.createReviewLevel({ user: SAVE.user, topic, grade: 1, subject: 'math', semester: 'upper' });
+          const res = await data.createReviewLevel({
+            user: SAVE.user,
+            topic,
+            grade: Number(btn.dataset.grade || SAVE.grade || 1),
+            subject: btn.dataset.subject || SAVE.subject || 'math',
+            semester: btn.dataset.semester || SAVE.semester || 'upper',
+          });
           overlay.classList.remove('show');
           toast?.(`已生成复习副本：${topic}`, 1400);
           openCampaignLevelDetail(ctx, res.level, overlay);
@@ -92,6 +100,18 @@ export async function openDailyReport(ctx) {
       const report = await loadReport(data, SAVE.user, mode);
       body.innerHTML = renderBody(report, mode);
       bindReviewButtons();
+      body.querySelector('.report-create-bounty')?.addEventListener('click', async () => {
+        audio.sfxClick();
+        const topic = report.summary?.weakTopics?.[0]?.topic || report.summary?.mastery?.[0]?.topic || '今日复习';
+        await data.fetchBounties({ user: SAVE.user, status: 'active' });
+        toast?.(`已根据报告刷新「${topic}」悬赏`, 1600);
+      });
+      body.querySelector('.report-create-praise')?.addEventListener('click', async () => {
+        audio.sfxClick(); await data.createPraiseCard({ user: SAVE.user, topic: report.summary?.weakTopics?.[0]?.topic || '今日学习' }); toast?.('表扬卡已生成，孩子侧可领取', 1600);
+      });
+      body.querySelector('.report-create-boss')?.addEventListener('click', async () => {
+        audio.sfxClick(); await data.createParentBoss({ user: SAVE.user, topic: report.summary?.weakTopics?.[0]?.topic || '家长挑战', q: '家长 Boss：4 + 5 = ?', options: ['8','9','10'], answer: '9' }); toast?.('家长 Boss 题已生成', 1600);
+      });
     } catch (e) {
       body.textContent = '报告加载失败：' + e.message;
     }

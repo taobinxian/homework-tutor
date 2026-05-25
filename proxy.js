@@ -51,6 +51,7 @@ const campaignApi   = require('./lib/campaign-api');
 const levelApi      = require('./lib/level-api');
 const reportsApi    = require('./lib/reports-api');
 const freePracticeApi = require('./lib/free-practice-api');
+const fullProductApi = require('./lib/full-product-api');
 const localTts      = require('./lib/local-tts');
 
 const PORT            = parseInt(process.env.PORT || '8787', 10);
@@ -508,6 +509,44 @@ const server = http.createServer((req,res)=>{
       .then(r=>writeJSON(r.status,r.body)).catch(e=>writeJSON(400,{error:e.message}));
   }
 
+
+  // ---------- 满血首发产品闭环 API：怪兽 / 悬赏 / 成长 / 地图事件 / 家庭互动 / 埋点 ----------
+  if(db && (pathname.startsWith('/api/monsters') || pathname.startsWith('/api/bounties') || pathname.startsWith('/api/growth') || pathname.startsWith('/api/inventory') || pathname.startsWith('/api/loadout') || pathname.startsWith('/api/knowledge-base') || pathname.startsWith('/api/runs') || pathname.startsWith('/api/map-events') || pathname.startsWith('/api/family') || pathname.startsWith('/api/analytics'))){
+    const u=new URL(req.url,'http://x');
+    const query=Object.fromEntries(u.searchParams.entries());
+    const writeJSON=(status,body)=>{res.writeHead(status,{...CORS,'Content-Type':'application/json; charset=utf-8'});res.end(JSON.stringify(body));};
+    const postJSON=(handler)=>readBody(req).then(buf=>handler(buf.length?JSON.parse(buf.toString('utf-8')):{})).then(r=>writeJSON(r.status,r.body)).catch(e=>writeJSON(400,{error:e.message}));
+
+    if(req.method==='GET' && pathname==='/api/monsters') { const r=fullProductApi.listMonstersHandler(db,query); return writeJSON(r.status,r.body); }
+    if(req.method==='POST' && pathname==='/api/monsters/sync-from-wrongbook') { const r={status:200,body:{ok:true,monsters:fullProductApi.syncMonstersFromWrongbook(db,{user:query.user||'default'})}}; return writeJSON(r.status,r.body); }
+    if(req.method==='GET' && pathname.startsWith('/api/monsters/')) { const r=fullProductApi.getMonsterHandler(db,decodeURIComponent(pathname.split('/').pop()),query); return writeJSON(r.status,r.body); }
+
+    if(req.method==='GET' && pathname==='/api/bounties') { const r=fullProductApi.listBountiesHandler(db,query); return writeJSON(r.status,r.body); }
+    if(req.method==='POST' && pathname==='/api/bounties/generate') return postJSON(j=>({status:200,body:{ok:true,bounties:fullProductApi.generateBounties(db,j)}}));
+    if(req.method==='POST' && pathname.match(/^\/api\/bounties\/[^/]+\/complete$/)) { const bid=decodeURIComponent(pathname.split('/')[3]); return postJSON(j=>fullProductApi.completeBountyHandler(db,bid,j)); }
+    if(req.method==='POST' && pathname.match(/^\/api\/bounties\/[^/]+\/claim$/)) { const bid=decodeURIComponent(pathname.split('/')[3]); return postJSON(j=>fullProductApi.claimBountyHandler(db,bid,j)); }
+
+    if(req.method==='GET' && pathname==='/api/growth/summary') { const r=fullProductApi.growthSummaryHandler(db,query); return writeJSON(r.status,r.body); }
+    if(req.method==='GET' && pathname==='/api/inventory') { const r=fullProductApi.inventoryHandler(db,query); return writeJSON(r.status,r.body); }
+    if(req.method==='POST' && pathname==='/api/loadout/equip') return postJSON(j=>fullProductApi.equipHandler(db,j));
+    if(req.method==='GET' && pathname==='/api/knowledge-base') { const r=fullProductApi.knowledgeBaseHandler(db,query); return writeJSON(r.status,r.body); }
+    if(req.method==='POST' && pathname==='/api/knowledge-base/place') return postJSON(j=>fullProductApi.placeKnowledgeBaseHandler(db,j));
+    if(req.method==='GET' && pathname.startsWith('/api/runs/') && pathname.endsWith('/highlights')) { query.runId=decodeURIComponent(pathname.split('/')[3]); const r=fullProductApi.runHighlightsHandler(db,query); return writeJSON(r.status,r.body); }
+
+    if(req.method==='GET' && pathname==='/api/map-events') { const r=fullProductApi.listMapEventsHandler(db,query); return writeJSON(r.status,r.body); }
+    if(req.method==='POST' && pathname.match(/^\/api\/map-events\/[^/]+\/complete$/)) { const eid=decodeURIComponent(pathname.split('/')[3]); return postJSON(j=>fullProductApi.completeMapEventHandler(db,eid,j)); }
+
+    if(req.method==='GET' && pathname==='/api/family/praise-cards') { const r=fullProductApi.listPraiseCardsHandler(db,query); return writeJSON(r.status,r.body); }
+    if(req.method==='POST' && pathname==='/api/family/praise-cards') return postJSON(j=>fullProductApi.createPraiseCardHandler(db,j));
+    if(req.method==='POST' && pathname.match(/^\/api\/family\/praise-cards\/[^/]+\/claim$/)) { const cid=decodeURIComponent(pathname.split('/')[4]); return postJSON(j=>fullProductApi.claimPraiseCardHandler(db,cid,j)); }
+    if(req.method==='GET' && pathname==='/api/family/parent-boss') { const r=fullProductApi.listParentBossHandler(db,query); return writeJSON(r.status,r.body); }
+    if(req.method==='POST' && pathname==='/api/family/parent-boss') return postJSON(j=>fullProductApi.createParentBossHandler(db,j));
+    if(req.method==='POST' && pathname.match(/^\/api\/family\/parent-boss\/[^/]+\/finish$/)) { const bid=decodeURIComponent(pathname.split('/')[4]); return postJSON(j=>fullProductApi.finishParentBossHandler(db,bid,j)); }
+
+    if(req.method==='GET' && pathname==='/api/analytics/events') { const r=fullProductApi.analyticsListHandler(db,query); return writeJSON(r.status,r.body); }
+    if(req.method==='POST' && pathname==='/api/analytics/events') return postJSON(j=>{fullProductApi.trackEvent(db,j.user||'default',j.eventName||j.event_name,j.payload||{});return {status:200,body:{ok:true}};});
+  }
+
   // ---------- 错题库 API ----------
   if(pathname.startsWith('/api/wrongbook') && db){
     const u=new URL(req.url,'http://x');
@@ -544,7 +583,7 @@ const server = http.createServer((req,res)=>{
   }
 
   res.writeHead(404,{...CORS,'Content-Type':'text/plain; charset=utf-8'});
-  res.end('404\n可用路由：GET /、GET /app、POST /v1/chat/completions、GET /tts、/api/questions、/api/campaign/map、/api/campaign/level、/api/levels/start、/api/levels/supply/submit、/api/levels/finish、/api/free-practice/finish、/api/reports/daily、/api/reports/weekly、/api/reports/review-level、/api/wrongbook\n');
+  res.end('404\n可用路由：GET /、GET /app、POST /v1/chat/completions、GET /tts、/api/questions、/api/campaign/map、/api/campaign/level、/api/levels/start、/api/levels/supply/submit、/api/levels/finish、/api/free-practice/finish、/api/reports/daily、/api/reports/weekly、/api/reports/review-level、/api/monsters、/api/bounties、/api/growth/summary、/api/map-events、/api/family/*、/api/analytics/events、/api/wrongbook\n');
 });
 
 server.listen(PORT,BIND,()=>{

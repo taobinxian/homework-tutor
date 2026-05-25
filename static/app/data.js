@@ -177,3 +177,59 @@ export async function aiChat({ url, model, messages, temperature, apiKey, signal
   }
   return res.json();
 }
+
+// ========== 满血首发闭环：错题怪兽 / 悬赏 / 成长收集 / 地图事件 / 家庭互动 / 埋点 ==========
+export async function fetchMonsters(user = 'default') {
+  return jsonRequest(`${BASE}/api/monsters?user=${encodeURIComponent(user)}`);
+}
+export async function fetchBounties({ user = 'default', status = 'active' } = {}) {
+  return jsonRequest(`${BASE}/api/bounties?user=${encodeURIComponent(user)}&status=${encodeURIComponent(status)}`);
+}
+export async function completeBounty(id, payload = {}) {
+  return jsonRequest(`${BASE}/api/bounties/${encodeURIComponent(id)}/complete`, { method: 'POST', body: JSON.stringify(payload) });
+}
+export async function claimBounty(id, payload = {}) {
+  return jsonRequest(`${BASE}/api/bounties/${encodeURIComponent(id)}/claim`, { method: 'POST', body: JSON.stringify(payload) });
+}
+export async function fetchGrowthSummary(user = 'default') {
+  return jsonRequest(`${BASE}/api/growth/summary?user=${encodeURIComponent(user)}`);
+}
+export async function fetchInventory(user = 'default') {
+  return jsonRequest(`${BASE}/api/inventory?user=${encodeURIComponent(user)}`);
+}
+export async function equipLoadout(payload = {}) {
+  return jsonRequest(`${BASE}/api/loadout/equip`, { method: 'POST', body: JSON.stringify(payload) });
+}
+export async function fetchKnowledgeBase(user = 'default') {
+  return jsonRequest(`${BASE}/api/knowledge-base?user=${encodeURIComponent(user)}`);
+}
+export async function fetchRunHighlights({ user = 'default', runId } = {}) {
+  return jsonRequest(`${BASE}/api/runs/${encodeURIComponent(runId || '')}/highlights?user=${encodeURIComponent(user)}`);
+}
+export async function fetchMapEvents({ user = 'default', status = 'available' } = {}) {
+  return jsonRequest(`${BASE}/api/map-events?user=${encodeURIComponent(user)}&status=${encodeURIComponent(status)}`);
+}
+export async function completeMapEvent(id, payload = {}) {
+  return jsonRequest(`${BASE}/api/map-events/${encodeURIComponent(id)}/complete`, { method: 'POST', body: JSON.stringify(payload) });
+}
+export async function fetchPraiseCards(user = 'default') {
+  return jsonRequest(`${BASE}/api/family/praise-cards?user=${encodeURIComponent(user)}`);
+}
+export async function createPraiseCard(payload = {}) {
+  return jsonRequest(`${BASE}/api/family/praise-cards`, { method: 'POST', body: JSON.stringify(payload) });
+}
+export async function claimPraiseCard(id, payload = {}) {
+  return jsonRequest(`${BASE}/api/family/praise-cards/${encodeURIComponent(id)}/claim`, { method: 'POST', body: JSON.stringify(payload) });
+}
+export async function fetchParentBoss(user = 'default') {
+  return jsonRequest(`${BASE}/api/family/parent-boss?user=${encodeURIComponent(user)}`);
+}
+export async function createParentBoss(payload = {}) {
+  return jsonRequest(`${BASE}/api/family/parent-boss`, { method: 'POST', body: JSON.stringify(payload) });
+}
+export async function finishParentBoss(id, payload = {}) {
+  return jsonRequest(`${BASE}/api/family/parent-boss/${encodeURIComponent(id)}/finish`, { method: 'POST', body: JSON.stringify(payload) });
+}
+export async function trackEvent(payload = {}) {
+  return jsonRequest(`${BASE}/api/analytics/events`, { method: 'POST', body: JSON.stringify(payload), timeoutMs: 3000 });
+}

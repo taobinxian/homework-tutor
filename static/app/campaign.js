@@ -39,6 +39,22 @@ export async function openCampaignMap(ctx) {
       const ev = (map.mapEvents || []).find(e => e.id === btn.dataset.event);
       if (!ev) return;
       if (ev.type === 'npc') { alert(ev.config?.text || '继续保持，知识能量正在变强！'); return; }
+      if (ev.type === 'branch') {
+        const level = levels.find(l => l.id === ev.levelId) || {
+          id: ev.levelId,
+          title: ev.config?.title || '分支挑战',
+          topic: ev.config?.topic || '',
+          type: 'review',
+          difficulty: 1,
+          questionCount: ev.config?.questionCount || 5,
+          config: { ...(ev.config || {}), icon: '🛤️', waves: 2 },
+          reward: ev.config?.reward || { exp: 12, gold: 6 },
+          unlocked: true,
+          stars: 0,
+        };
+        openCampaignLevelDetail(ctx, level, overlay);
+        return;
+      }
       try { await data.completeMapEvent(ev.id, { user: SAVE.user }); btn.disabled = true; btn.querySelector('small').textContent = '已完成'; }
       catch (e) { alert('事件完成失败：' + e.message); }
     });

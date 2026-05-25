@@ -1,7 +1,22 @@
+import { openCampaignLevelDetail } from './level-detail.js';
+
 function esc(s) { return String(s ?? '').replace(/[&<>\"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '\"': '&quot;' }[ch])); }
 function pct(n) { return Math.round(Number(n || 0) * 100); }
 function learnerContext(SAVE = {}) {
   return { grade: Number(SAVE.grade || 1), subject: SAVE.subject || 'math', semester: SAVE.semester || 'upper' };
+}
+
+async function enterReviewLevel(ctx, topic, sourceOverlay) {
+  const { data, SAVE, audio, toast } = ctx;
+  const title = String(topic || '').trim();
+  if (!title) throw new Error('缺少复习知识点');
+  const result = await data.createReviewLevel({ user: SAVE.user, topic: title, ...learnerContext(SAVE) });
+  if (!result?.level) throw new Error('后端未返回复习副本');
+  sourceOverlay?.classList.remove('show');
+  audio.sfxLevelUp?.();
+  openCampaignLevelDetail(ctx, result.level, sourceOverlay);
+  toast?.(`已进入复习副本：${title}`, 1400);
+  return result.level;
 }
 
 export async function openMonsterAtlas(ctx) {
@@ -20,15 +35,21 @@ export async function openMonsterAtlas(ctx) {
         <div class="wb-q">${m.status === 'purified' ? '✨' : m.status === 'bounty' ? '🎯' : '🐲'} ${esc(m.name)}</div>
         <div class="wb-meta">${esc(m.topic)} · 错 ${m.wrongCount} · ${esc(m.status)}</div>
         <div class="wb-ans">知识点：${(m.knowledgePoints || []).map(esc).join('、') || esc(m.topic)}</div>
-        ${b ? `<button class="monster-bounty" data-id="${esc(b.id)}">挑战悬赏：${esc(b.difficulty)}</button>` : `<button class="monster-review" data-topic="${esc(m.topic)}">生成复习副本</button>`}
+        ${b ? `<button class="monster-bounty" data-id="${esc(b.id)}" data-topic="${esc(b.topic || m.topic)}">挑战悬赏：${esc(b.difficulty)}</button>` : `<button class="monster-review" data-topic="${esc(m.topic)}">生成复习副本</button>`}
       </div>`;
     }).join('')}</div>` : '<div class="inv-empty">目前没有错题怪兽。继续冒险，遇到错题也不用怕，它会变成可战胜的挑战。</div>';
     body.querySelectorAll('.monster-review').forEach(btn => btn.onclick = async () => {
       audio.sfxClick();
-      try { await data.createReviewLevel({ user: SAVE.user, topic: btn.dataset.topic, ...learnerContext(SAVE) }); toast?.('已生成复习副本'); }
-      catch (e) { toast?.('生成失败：' + e.message); }
+      btn.disabled = true;
+      try { await enterReviewLevel(ctx, btn.dataset.topic, overlay); }
+      catch (e) { btn.disabled = false; toast?.('进入失败：' + e.message); }
     });
-    body.querySelectorAll('.monster-bounty').forEach(btn => btn.onclick = () => { audio.sfxClick(); toast?.('从悬赏任务面板进入挑战'); openBountyBoard(ctx); });
+    body.querySelectorAll('.monster-bounty').forEach(btn => btn.onclick = async () => {
+      audio.sfxClick();
+      btn.disabled = true;
+      try { await enterReviewLevel(ctx, btn.dataset.topic, overlay); }
+      catch (e) { btn.disabled = false; toast?.('挑战启动失败：' + e.message); }
+    });
   } catch (e) { body.textContent = '图鉴加载失败：' + e.message; }
 }
 
@@ -53,8 +74,9 @@ export async function openBountyBoard(ctx) {
     </div>`).join('') : '<div class="inv-empty">暂无悬赏。日报识别到薄弱点或错题累计后会自动出现。</div>';
     body.querySelectorAll('.bounty-review').forEach(btn => btn.onclick = async () => {
       audio.sfxClick();
-      try { await data.createReviewLevel({ user: SAVE.user, topic: btn.dataset.topic, ...learnerContext(SAVE) }); toast?.('复习副本已准备好，请到地图/复习入口挑战'); }
-      catch (e) { toast?.('复习副本生成失败：' + e.message); }
+      btn.disabled = true;
+      try { await enterReviewLevel(ctx, btn.dataset.topic, overlay); }
+      catch (e) { btn.disabled = false; toast?.('复习副本进入失败：' + e.message); }
     });
     body.querySelectorAll('.bounty-claim').forEach(btn => btn.onclick = async () => {
       audio.sfxClick();

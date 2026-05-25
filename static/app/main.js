@@ -353,12 +353,41 @@ function openShop() {
 }
 
 // ---------- 知识战场入口上下文 ----------
+let homePanelGeneration = 0;
+
+function isHomeRouteActive() {
+  const home = $('#home');
+  const stage = $('#stage');
+  return !campaignCombatActive && home && home.style.display !== 'none' && !(stage && stage.classList.contains('show'));
+}
+
+function invalidateHomePanels() {
+  homePanelGeneration++;
+}
+
+function homePanelCtx() {
+  const token = ++homePanelGeneration;
+  return {
+    ...campaignCtx(),
+    homePanelToken: token,
+    isHomePanelCurrent: () => token === homePanelGeneration && isHomeRouteActive(),
+  };
+}
+
 function handleCampaignEntryClick(e) {
   const btn = e.target.closest('[data-campaign-action]');
   if (!btn) return;
+  e.preventDefault();
+  e.stopPropagation();
   const action = btn.dataset.campaignAction;
-  const ctx = campaignCtx();
-  if (action === 'campaign') { audio.sfxLevelUp(); openCampaignMapUI(ctx); return; }
+  if (!isHomeRouteActive()) return;
+  if (action === 'campaign') {
+    invalidateHomePanels();
+    audio.sfxLevelUp();
+    openCampaignMapUI(campaignCtx());
+    return;
+  }
+  const ctx = homePanelCtx();
   audio.sfxClick();
   if (action === 'report') openDailyReportUI(ctx);
   else if (action === 'atlas') openMonsterAtlas(ctx);
@@ -440,6 +469,7 @@ async function checkCampaignResumePrompt() {
 let campaignCombatActive = false;
 
 function hideTransientOverlays() {
+  invalidateHomePanels();
   document.querySelectorAll('.overlay.show').forEach(o => o.classList.remove('show'));
 }
 

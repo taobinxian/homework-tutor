@@ -40,3 +40,23 @@ test('layout selection is driven by CSS breakpoints rather than user-agent sniff
 
   assert.doesNotMatch(js, /navigator\.userAgent|navigator\.platform|\buserAgentData\b/);
 });
+
+test('desktop overlay panel widths win after topbar overlay base rules', () => {
+  const html = read('index.html');
+  const css = html.match(/<style>([\s\S]*?)<\/style>/)?.[1] || '';
+  const desktopRule = '.shop-panel{max-width:1040px;width:min(1040px,calc(100vw - 80px))';
+  const desktopIndex = css.lastIndexOf(desktopRule);
+
+  assert.notEqual(desktopIndex, -1);
+  for (const baseRule of [
+    '.wb-panel,.ph-panel,.st-panel{background:',
+    '.achv-panel{background:',
+    '.daily-panel{background:',
+    '.inv-panel{background:',
+    '.shop-panel{background:',
+  ]) {
+    const baseIndex = css.lastIndexOf(baseRule);
+    assert.notEqual(baseIndex, -1, `${baseRule} should exist`);
+    assert.ok(desktopIndex > baseIndex, `${desktopRule} must be later than ${baseRule}`);
+  }
+});

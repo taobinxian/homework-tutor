@@ -58,10 +58,13 @@ async function loadReport(data, user, mode) {
 
 export async function openDailyReport(ctx) {
   const { data, SAVE, audio, ensureOverlay, toast } = ctx;
+  const isCurrent = () => !ctx.isHomePanelCurrent || ctx.isHomePanelCurrent();
+  if (!isCurrent()) return;
   const overlay = ensureOverlay('dailyreport');
   overlay.innerHTML = `<div class="report-panel"><div class="camp-head"><h2>📊 家长学习报告</h2><button class="camp-close">×</button></div>
     <div class="report-tabs"><button class="report-tab active" data-mode="daily">今日</button><button class="report-tab" data-mode="weekly">近7日</button></div>
     <div class="report-body">生成报告中…</div></div>`;
+  overlay.dataset.homePanel = '1';
   overlay.classList.add('show');
   overlay.querySelector('.camp-close').onclick = () => { audio.sfxClick(); overlay.classList.remove('show'); };
   const body = overlay.querySelector('.report-body');
@@ -98,6 +101,7 @@ export async function openDailyReport(ctx) {
     overlay.querySelectorAll('.report-tab').forEach(b => b.classList.toggle('active', b.dataset.mode === mode));
     try {
       const report = await loadReport(data, SAVE.user, mode);
+      if (!isCurrent()) { overlay.classList.remove('show'); return; }
       body.innerHTML = renderBody(report, mode);
       bindReviewButtons();
       body.querySelector('.report-create-bounty')?.addEventListener('click', async () => {
@@ -113,6 +117,7 @@ export async function openDailyReport(ctx) {
         audio.sfxClick(); await data.createParentBoss({ user: SAVE.user, topic: report.summary?.weakTopics?.[0]?.topic || '家长挑战', q: '家长 Boss：4 + 5 = ?', options: ['8','9','10'], answer: '9' }); toast?.('家长 Boss 题已生成', 1600);
       });
     } catch (e) {
+      if (!isCurrent()) { overlay.classList.remove('show'); return; }
       body.textContent = '报告加载失败：' + e.message;
     }
   };

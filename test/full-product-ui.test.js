@@ -61,3 +61,19 @@ test('campaign challenge start is single-flight and hides stale overlays before 
   assert.match(main, /if \(campaignCombatActive\) return/);
   assert.match(main, /hideTransientOverlays\(\)/);
 });
+
+test('home product panels are route-bound and invalidated when combat starts', () => {
+  const main = read('static/app/main.js');
+  const reports = read('static/app/reports.js');
+  const fullProduct = read('static/app/full-product.js');
+  assert.match(main, /let homePanelGeneration = 0/);
+  assert.match(main, /function isHomeRouteActive\(\)/);
+  assert.match(main, /function invalidateHomePanels\(\)/);
+  assert.match(main, /isHomePanelCurrent: \(\) => token === homePanelGeneration && isHomeRouteActive\(\)/);
+  assert.match(main, /if \(!isHomeRouteActive\(\)\) return/);
+  assert.match(main, /function hideTransientOverlays\(\) \{\n  invalidateHomePanels\(\)/);
+  assert.match(reports, /const isCurrent = \(\) => !ctx\.isHomePanelCurrent \|\| ctx\.isHomePanelCurrent\(\)/);
+  assert.match(reports, /if \(!isCurrent\(\)\) \{ overlay\.classList\.remove\('show'\); return; \}/);
+  assert.match(fullProduct, /const isCurrent = \(\) => !ctx\.isHomePanelCurrent \|\| ctx\.isHomePanelCurrent\(\)/);
+  assert.match(fullProduct, /if \(!isCurrent\(\)\) \{ overlay\.classList\.remove\('show'\); return; \}/);
+});

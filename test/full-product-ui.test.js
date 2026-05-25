@@ -47,3 +47,17 @@ test('home campaign entry buttons use delegated actions for all product panels',
   assert.match(src, /action === 'growth'[\s\S]*openGrowthCenter\(ctx\)/);
   assert.match(src, /action === 'family'[\s\S]*openFamilyCenter\(ctx\)/);
 });
+
+test('campaign challenge start is single-flight and hides stale overlays before combat', () => {
+  const detail = read('static/app/level-detail.js');
+  const supply = read('static/app/supply.js');
+  const main = read('static/app/main.js');
+  assert.match(detail, /btn\.dataset\.busy === '1'/);
+  assert.match(detail, /btn\.disabled = true/);
+  assert.match(supply, /btn\.dataset\.busy === '1'/);
+  assert.match(supply, /ctx\.onSupplyComplete\?\.\(\{ \.\.\.payload, openingAnswers: answers, resources \}\)/);
+  assert.match(main, /let campaignCombatActive = false/);
+  assert.match(main, /function hideTransientOverlays\(\)/);
+  assert.match(main, /if \(campaignCombatActive\) return/);
+  assert.match(main, /hideTransientOverlays\(\)/);
+});

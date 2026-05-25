@@ -373,7 +373,16 @@ function campaignCtx() {
   };
 }
 
+let campaignCombatActive = false;
+
+function hideTransientOverlays() {
+  document.querySelectorAll('.overlay.show').forEach(o => o.classList.remove('show'));
+}
+
 async function startCampaignCombat(payload) {
+  if (campaignCombatActive) return;
+  campaignCombatActive = true;
+  hideTransientOverlays();
   const stage = $('#stage');
   const level = payload.level;
   const openingAnswers = payload.openingAnswers || [];
@@ -442,6 +451,7 @@ async function startCampaignCombat(payload) {
         engine.destroy(); // 卸 document keydown 监听 + 清 timers，避免重玩时按键重复触发
         stage.classList.remove('show'); stage.innerHTML = '';
         $('#home').style.display = ''; renderLevelSelect();
+        campaignCombatActive = false;
         if ((result === 'win' || result === 'complete') && !finish.error) {
           await openCampaignMapUI(campaignCtx()).catch(e => toast('地图刷新失败：' + e.message, 2400));
         }
@@ -450,7 +460,11 @@ async function startCampaignCombat(payload) {
       requestTTS: text => { speak(text, { interrupt: true }); return Promise.resolve(); },
     },
   });
-  engine.run().catch(err => { console.error('knowledge shooter error:', err); toast('知识战场错误: ' + err.message); });
+  engine.run().catch(err => {
+    campaignCombatActive = false;
+    console.error('knowledge shooter error:', err);
+    toast('知识战场错误: ' + err.message);
+  });
 }
 
 function showCampaignResult({ result, stars, rewards, evolved, newAchv, stats, report }) {

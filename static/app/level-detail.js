@@ -20,7 +20,12 @@ export function openCampaignLevelDetail(ctx, level, mapOverlay) {
   </div>`;
   overlay.classList.add('show');
   overlay.querySelector('.camp-close').onclick = () => { audio.sfxClick(); overlay.classList.remove('show'); };
-  overlay.querySelector('.camp-start').onclick = async () => {
+  overlay.querySelector('.camp-start').onclick = async (e) => {
+    const btn = e.currentTarget;
+    if (btn.dataset.busy === '1') return;
+    btn.dataset.busy = '1';
+    btn.disabled = true;
+    btn.textContent = '启动中…';
     audio.sfxLevelUp();
     overlay.classList.remove('show');
     mapOverlay?.classList.remove('show');

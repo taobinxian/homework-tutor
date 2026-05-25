@@ -385,3 +385,44 @@ test('campaign map unlocks next level after a cleared run even when computed sta
     db.close();
   } finally { cleanup(file); }
 });
+
+const progressApi = require('../lib/progress-api');
+
+test('campaign session and progress save support resume checkpoint', () => {
+  const file = tmpDb();
+  try {
+    const db = openDb(file); initSchema(db); seedCampaigns(db);
+    const start = progressApi.startSessionHandler(db, {
+      user: 'u-save', grade: 1, subject: 'math', semester: 'upper', plannedCount: 3,
+      startLevelId: 'g1-math-upper-1-1', currentLevelId: 'g1-math-upper-1-1',
+    });
+    assert.equal(start.status, 200);
+    assert.equal(start.body.session.plannedCount, 3);
+    const saved = progressApi.saveProgressHandler(db, {
+      user: 'u-save', runId: 'run-save', levelId: 'g1-math-upper-1-1', sessionId: start.body.session.sessionId,
+      phase: 'opening', checkpoint: 'answer', payload: { currentQuestionIndex: 2, level: { id: 'g1-math-upper-1-1', title: 'L1' } },
+    });
+    assert.equal(saved.status, 200);
+    const resume = progressApi.resumeHandler(db, { user: 'u-save' });
+    assert.equal(resume.status, 200);
+    assert.equal(resume.body.hasResume, true);
+    assert.equal(resume.body.save.runId, 'run-save');
+    assert.equal(resume.body.save.payload.currentQuestionIndex, 2);
+    db.close();
+  } finally { cleanup(file); }
+});
+
+test('campaign next level follows order and reports locked condition', () => {
+  const file = tmpDb();
+  try {
+    const db = openDb(file); initSchema(db); seedCampaigns(db);
+    const locked = progressApi.getNextLevel(db, { user: 'u-next', levelId: 'g1-math-upper-1-1', grade: 1, subject: 'math', semester: 'upper' });
+    assert.equal(locked.status, 423);
+    assert.match(locked.body.unlockHint, /需要先通关/);
+    levelApi.finishHandler(db, { user: 'u-next', runId: 'run-next', levelId: 'g1-math-upper-1-1', result: 'win', correctCount: 5, wrongCount: 0 });
+    const next = progressApi.getNextLevel(db, { user: 'u-next', levelId: 'g1-math-upper-1-1', grade: 1, subject: 'math', semester: 'upper' });
+    assert.equal(next.status, 200);
+    assert.equal(next.body.nextLevel.id, 'g1-math-upper-1-2');
+    db.close();
+  } finally { cleanup(file); }
+});

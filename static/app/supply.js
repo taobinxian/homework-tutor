@@ -22,7 +22,7 @@ function renderResources(r = {}) {
   return `🔸弹药 ${r.ammo_basic || 0} · 💥爆裂 ${r.skill_bomb || 0} · 🛡护盾 ${r.shield || 0} · ⚡大招 ${r.ultimate_energy || 0}`;
 }
 
-export async function openSupply(ctx, level) {
+export async function openSupply(ctx, level, resume = null) {
   const { data, SAVE, audio, toast, ensureOverlay } = ctx;
   const overlay = ensureOverlay('supply');
   overlay.innerHTML = `<div class="supply-panel">
@@ -34,7 +34,9 @@ export async function openSupply(ctx, level) {
 
   let payload;
   try {
-    payload = await data.startCampaignLevel({ user: SAVE.user, levelId: level.id });
+    payload = resume?.payload?.runId
+      ? { ...resume.payload, level: resume.payload.level || level }
+      : await data.startCampaignLevel({ user: SAVE.user, levelId: level.id, runId: resume?.payload?.runId });
   } catch (e) {
     audio.sfxWrong();
     overlay.querySelector('.supply-body').textContent = '关卡启动失败：' + e.message;
@@ -43,11 +45,24 @@ export async function openSupply(ctx, level) {
 
   const body = overlay.querySelector('.supply-body');
   const questions = (payload.questions || []).slice(0, payload.supplyConfig?.opening || 5);
-  const answers = [];
-  let idx = 0;
-  let combo = 0;
+  const answers = Array.isArray(resume?.payload?.openingAnswers) ? [...resume.payload.openingAnswers] : [];
+  let idx = Math.min(answers.length, questions.length);
+  let combo = Number(resume?.payload?.combo || 0);
   const difficulty = Number(level.difficulty || 1);
-  let resources = { ...(payload.initialResources || {}) };
+  let resources = { ...(resume?.payload?.resources || payload.initialResources || {}) };
+  const saveCheckpoint = async (checkpoint) => {
+    const snapshot = {
+      ...payload,
+      level: payload.level || level,
+      openingAnswers: answers,
+      resources,
+      combo,
+      currentQuestionIndex: idx,
+      campaignSession: ctx.campaignSession || null,
+    };
+    try { await ctx.saveCampaignCheckpoint?.({ runId: payload.runId, levelId: level.id, phase: 'opening', checkpoint, payload: snapshot }); }
+    catch (e) { console.warn('campaign checkpoint failed:', e); }
+  };
 
   const renderQuestion = () => {
     const q = questions[idx];
@@ -77,9 +92,11 @@ export async function openSupply(ctx, level) {
         btn.classList.add(correct ? 'selected' : 'wrong');
         try {
           await data.submitSupply({ runId: payload.runId, phase: 'opening', answers: [answerRecord] });
+          await saveCheckpoint('answer');
           toast(`补给更新：${renderResources(resources)}`, 1200);
         } catch (e) {
           toast('⚠️ 补给记录失败：' + e.message, 2200);
+          saveCheckpoint('answer').catch(err => console.warn('local checkpoint failed:', err));
         }
         setTimeout(() => { idx += 1; renderQuestion(); }, 420);
       };
@@ -88,6 +105,7 @@ export async function openSupply(ctx, level) {
 
   const renderDone = () => {
     const correct = answers.filter(a => a.isCorrect).length;
+    saveCheckpoint('phase-complete').catch(err => console.warn('phase checkpoint failed:', err));
     body.innerHTML = `<div class="supply-done">
       <div class="result-emoji">📦</div>
       <h3>补给完成</h3>

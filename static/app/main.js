@@ -432,6 +432,9 @@ async function startCampaignCombat(payload) {
         engine.destroy(); // 卸 document keydown 监听 + 清 timers，避免重玩时按键重复触发
         stage.classList.remove('show'); stage.innerHTML = '';
         $('#home').style.display = ''; renderLevelSelect();
+        if ((result === 'win' || result === 'complete') && !finish.error) {
+          await openCampaignMapUI(campaignCtx()).catch(e => toast('地图刷新失败：' + e.message, 2400));
+        }
       },
       requestExplain: explainQuestion,
       requestTTS: text => { speak(text, { interrupt: true }); return Promise.resolve(); },

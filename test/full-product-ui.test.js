@@ -28,3 +28,9 @@ test('branch map events open a playable level detail rather than marking complet
   const branchBlock = src.match(/if \(ev\.type === 'branch'\) \{[\s\S]*?\n      \}/)?.[0] || '';
   assert.doesNotMatch(branchBlock, /completeMapEvent/);
 });
+
+test('campaign completion refreshes map after result dialog closes', () => {
+  const src = read('static/app/main.js');
+  assert.match(src, /await showCampaignResult\(\{ result, stars, rewards, evolved, newAchv, stats, finish, report \}\);/);
+  assert.match(src, /if \(\(result === 'win' \|\| result === 'complete'\) && !finish\.error\) \{\s*await openCampaignMapUI\(campaignCtx\(\)\)/s);
+});

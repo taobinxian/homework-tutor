@@ -360,3 +360,28 @@ test('weakTopics 从题级 topic 聚合，主页练习的薄弱点也能显示',
     db.close();
   } finally { cleanup(file); }
 });
+
+test('campaign map unlocks next level after a cleared run even when computed stars are 0', () => {
+  const file = tmpDb();
+  try {
+    const db = openDb(file); initSchema(db); seedCampaigns(db);
+    const finish = levelApi.finishHandler(db, {
+      user: 'u-clear-zero', runId: 'r-clear-zero', levelId: 'g1-math-upper-1-1',
+      result: 'win', correctCount: 0, wrongCount: 3, durationSec: 60,
+    });
+    assert.equal(finish.status, 200);
+    assert.equal(finish.body.stars, 0);
+    const progress = db.prepare('SELECT best_stars, clear_times, last_result FROM level_progress WHERE user=? AND level_id=?')
+      .get('u-clear-zero', 'g1-math-upper-1-1');
+    assert.equal(progress.best_stars, 0);
+    assert.equal(progress.clear_times, 1);
+    assert.equal(progress.last_result, 'win');
+
+    const r = campaign.mapHandler(db, { user: 'u-clear-zero', grade: '1', subject: 'math', semester: 'upper' });
+    const levels = r.body.chapters[0].levels;
+    assert.equal(levels[0].state, 'cleared');
+    assert.equal(levels[1].unlocked, true);
+    assert.equal(r.body.recommendedLevelId, 'g1-math-upper-1-2');
+    db.close();
+  } finally { cleanup(file); }
+});

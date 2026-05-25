@@ -54,6 +54,7 @@ const reportsApi    = require('./lib/reports-api');
 const freePracticeApi = require('./lib/free-practice-api');
 const fullProductApi = require('./lib/full-product-api');
 const localTts      = require('./lib/local-tts');
+const { cloudSpeakerForVoice } = require('./lib/tts-voices');
 
 const PORT            = parseInt(process.env.PORT || '8787', 10);
 const BIND            = process.env.BIND            || '0.0.0.0';
@@ -200,12 +201,13 @@ function handleTTS(req,res){
     // 1.0 -> 0 ；  0.8 -> -20 ；  1.2 -> 20
     const speechRate = Math.max(-50, Math.min(50, Math.round((p.rate - 1.0) * 100)));
     const resourceId = pickResourceId(p.voice);
+    const speaker = cloudSpeakerForVoice(p.voice);
 
     const payload = JSON.stringify({
       user: { uid: 'homework-app' },
       req_params: {
         text   : p.text.slice(0, 1024),
-        speaker: p.voice,
+        speaker,
         audio_params: {
           format     : p.encoding,   // 'mp3' | 'wav' | 'pcm'
           sample_rate: 24000,

@@ -21,6 +21,7 @@ import { FightingEngine } from './engines/fighting.js';
 import { KnowledgeShooterEngine } from './engines/knowledge-shooter.js';
 import { openCampaignMap as openCampaignMapUI } from './campaign.js';
 import { openDailyReport as openDailyReportUI } from './reports.js';
+import { openMonsterAtlas, openBountyBoard, openGrowthCenter, openFamilyCenter } from './full-product.js';
 
 const SAVE_KEY = 'scholar_odyssey_save_v1';
 const SAVE = migrateState(loadJSON(SAVE_KEY, null));
@@ -190,6 +191,10 @@ function renderLevelSelect() {
     <div class="campaign-entry">
       <button id="btn-campaign" class="btn-start campaign">🪐 进入知识战场</button>
       <button id="btn-report" class="btn-mini campaign-report">📊 家长日报</button>
+      <button id="btn-atlas" class="btn-mini">🐲 图鉴</button>
+      <button id="btn-bounty" class="btn-mini">🎯 悬赏</button>
+      <button id="btn-growth" class="btn-mini">🌱 成长</button>
+      <button id="btn-family" class="btn-mini">💌 家庭</button>
     </div>
     <div class="ls-row"><span>年级</span>${[1,2,3,4,5,6].map(g => btn('g', g, '年级' + g, sel.grade === g, false)).join('')}</div>
     <div class="ls-row"><span>科目</span>${SUBJECTS.map(s => btn('s', s.key, s.icon + ' ' + s.label, sel.subject === s.key, !isSubjectAvailable(sel.grade, s.key))).join('')}</div>
@@ -220,6 +225,10 @@ function renderLevelSelect() {
   $('#btn-start').addEventListener('click', () => { audio.sfxLevelUp(); startLevel(); });
   $('#btn-campaign')?.addEventListener('click', () => { audio.sfxLevelUp(); openCampaignMapUI(campaignCtx()); });
   $('#btn-report')?.addEventListener('click', () => { audio.sfxClick(); openDailyReportUI(campaignCtx()); });
+  $('#btn-atlas')?.addEventListener('click', () => { audio.sfxClick(); openMonsterAtlas(campaignCtx()); });
+  $('#btn-bounty')?.addEventListener('click', () => { audio.sfxClick(); openBountyBoard(campaignCtx()); });
+  $('#btn-growth')?.addEventListener('click', () => { audio.sfxClick(); openGrowthCenter(campaignCtx()); });
+  $('#btn-family')?.addEventListener('click', () => { audio.sfxClick(); openFamilyCenter(campaignCtx()); });
 
   // 道具槽位点击：移除已激活
   home.querySelectorAll('.it-slot').forEach(s => s.addEventListener('click', () => {

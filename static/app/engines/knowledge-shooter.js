@@ -48,7 +48,8 @@ export class KnowledgeShooterEngine extends LevelEngine {
     this.boss = null;
     this.wrongQuestions = [];
     this.answers = [];
-    this.combatStats = { kills: 0, hitsTaken: 0, shotsFired: 0, wavesCleared: 0, bossShieldSolved: 0, bossShieldTriggers: 0 };
+    this.combatStats = { kills: 0, hitsTaken: 0, shotsFired: 0, wavesCleared: 0, bossShieldSolved: 0, bossShieldTriggers: 0, maxCombo: 0, comboBreakCount: 0, comboBonusResources: 0, rescueTriggered: 0, rescueSuccess: 0 };
+    this.rescueLeft = Math.min(2, Number(opts.config?.rescueChances || 1));
     this.startedAt = 0;
     this.reducedMotion = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
     this._keys = new Set();
@@ -127,7 +128,7 @@ export class KnowledgeShooterEngine extends LevelEngine {
       this._emit('finish', result);
       this.callbacks.onComplete?.({
         result: result.result,
-        stats: { ...this.stats, ...(result.stats || {}) },
+        stats: { ...this.stats, ...(result.stats || {}), maxCombo: this.combatStats.maxCombo, rescueSuccess: this.combatStats.rescueSuccess },
       });
     }
   }
@@ -149,14 +150,25 @@ export class KnowledgeShooterEngine extends LevelEngine {
         this.stats.correct++;
         phaseCorrect++;
         combo++;
+        this.combatStats.maxCombo = Math.max(this.combatStats.maxCombo, combo);
+        if (combo === 3) { this.resources.ammo_basic += 2; this.combatStats.comboBonusResources += 2; this._showBanner('🔥 Combo 3！额外弹药 +2'); }
+        if (combo === 5) { this.resources.skill_bomb += 1; this.combatStats.comboBonusResources += 1; this._showBanner('⚡ Combo 5！爆裂技能 +1'); }
         this.callbacks.onCorrect?.(q);
       } else {
-        this.stats.wrong++;
-        combo = 0;
-        this.wrongQuestions.push({ ...q, userAnswer });
-        this.callbacks.onWrong?.(q, userAnswer);
-        if (this.callbacks.onWrongAdd) {
-          Promise.resolve().then(() => this.callbacks.onWrongAdd(q, userAnswer)).catch(err => console.warn('[knowledge-shooter] wrong add failed', err));
+        this.combatStats.comboBreakCount++;
+        const rescued = await this._tryRescue(q, phase);
+        if (rescued) {
+          this.combatStats.rescueSuccess++;
+          combo = Math.max(1, combo);
+          this._showBanner('🩹 补救一击成功！怪兽没有强化');
+        } else {
+          this.stats.wrong++;
+          combo = 0;
+          this.wrongQuestions.push({ ...q, userAnswer });
+          this.callbacks.onWrong?.(q, userAnswer);
+          if (this.callbacks.onWrongAdd) {
+            Promise.resolve().then(() => this.callbacks.onWrongAdd(q, userAnswer)).catch(err => console.warn('[knowledge-shooter] wrong add failed', err));
+          }
         }
       }
       this._grantResources({ phase, correct, combo, durationMs });
@@ -176,6 +188,16 @@ export class KnowledgeShooterEngine extends LevelEngine {
     }
     this._panel.innerHTML = `<div class="ks-loadout">资源装载：🔸弹药 ${this.resources.ammo_basic} · 💥爆裂 ${this.resources.skill_bomb} · 🛡护盾 ${this.resources.shield} · ⚡大招 ${this.resources.ultimate_energy}</div>`;
     await this._sleep(650);
+  }
+
+  async _tryRescue(q, phase) {
+    if (this.rescueLeft <= 0 || phase === 'boss') return false;
+    this.rescueLeft--;
+    this.combatStats.rescueTriggered++;
+    this._showBanner('🩹 补救一击：看提示再答一次！');
+    const rescueQ = { ...q, q: `${q.q}（提示：${Array.isArray(q.hints) && q.hints[0] ? q.hints[0] : '再检查一次关键数字'}）` };
+    const { correct } = await this._askSupplyQuestion(rescueQ, 'rescue');
+    return !!correct;
   }
 
   _takeQuestions(count) {

@@ -400,6 +400,7 @@ function campaignCtx() {
   return {
     data, SAVE, audio, toast, ensureOverlay,
     campaignSession: SAVE.campaignSession || null,
+    persistSave,
     saveCampaignCheckpoint,
     resumeCampaignFromSave,
     onSupplyComplete: startCampaignCombat,
@@ -413,6 +414,15 @@ function loadLocalCampaignProgress() {
 }
 function saveLocalCampaignProgress(snapshot) { saveJSON(CAMPAIGN_PROGRESS_KEY, snapshot); }
 function clearLocalCampaignProgress() { saveJSON(CAMPAIGN_PROGRESS_KEY, null); }
+
+function campaignProgressTime(save) {
+  const raw = save?.serverUpdatedAt || save?.clientUpdatedAt || '';
+  if (!raw) return 0;
+  const text = String(raw);
+  const normalized = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(text) ? `${text.replace(' ', 'T')}Z` : text;
+  const time = Date.parse(normalized);
+  return Number.isFinite(time) ? time : 0;
+}
 
 async function saveCampaignCheckpoint({ runId, levelId, phase, checkpoint, payload = {}, status = 'active' }) {
   if (!runId || !levelId) return;
@@ -456,7 +466,7 @@ async function checkCampaignResumePrompt() {
   try { server = await data.fetchCampaignResume(SAVE.user); } catch (e) { console.warn('fetch campaign resume failed:', e); }
   const candidates = [server?.save, local].filter(Boolean);
   if (!candidates.length) return;
-  candidates.sort((a, b) => String(b.serverUpdatedAt || b.clientUpdatedAt || '').localeCompare(String(a.serverUpdatedAt || a.clientUpdatedAt || '')));
+  candidates.sort((a, b) => campaignProgressTime(b) - campaignProgressTime(a));
   const pick = candidates[0];
   if (local && server?.save && local.runId !== server.save.runId) {
     const useLocal = await showConfirm({ icon: '⚠️', title: '检测到多设备进度冲突', msg: '服务器和本机都有未完成关卡。建议使用服务器最新进度；是否改用本机进度？', yes: '用本机', no: '用服务器' });

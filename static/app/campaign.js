@@ -6,7 +6,7 @@ function esc(s) {
 }
 
 export async function openCampaignMap(ctx) {
-  const { data, SAVE, audio, ensureOverlay } = ctx;
+  const { data, SAVE, audio, ensureOverlay, persistSave } = ctx;
   const overlay = ensureOverlay('campaign');
   overlay.innerHTML = `<div class="camp-panel"><div class="camp-head"><h2>🪐 知识战场</h2><button class="camp-close">×</button></div><div class="camp-body">加载战役地图…</div></div>`;
   overlay.classList.add('show');
@@ -60,7 +60,14 @@ export async function openCampaignMap(ctx) {
       catch (e) { alert('事件完成失败：' + e.message); }
     });
     const saveExit = body.querySelector('.camp-save-exit');
-    if (saveExit) saveExit.onclick = async () => { audio.sfxClick(); try { await data.updateCampaignSession({ ...SAVE.campaignSession, user: SAVE.user, sessionId: SAVE.campaignSession?.sessionId, status: 'abandoned' }); } catch (_) {} SAVE.campaignSession = null; ctx.toast?.('已保存并退出连续闯关'); overlay.classList.remove('show'); };
+    if (saveExit) saveExit.onclick = async () => {
+      audio.sfxClick();
+      try { await data.updateCampaignSession({ ...SAVE.campaignSession, user: SAVE.user, sessionId: SAVE.campaignSession?.sessionId, status: 'abandoned' }); } catch (_) {}
+      SAVE.campaignSession = null;
+      persistSave?.();
+      ctx.toast?.('已保存并退出连续闯关');
+      overlay.classList.remove('show');
+    };
     body.querySelector('.camp-report-open').onclick = () => { audio.sfxClick(); openDailyReport(ctx); };
   } catch (e) {
     audio.sfxWrong();

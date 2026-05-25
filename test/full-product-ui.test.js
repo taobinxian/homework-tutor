@@ -77,3 +77,19 @@ test('home product panels are route-bound and invalidated when combat starts', (
   assert.match(fullProduct, /const isCurrent = \(\) => !ctx\.isHomePanelCurrent \|\| ctx\.isHomePanelCurrent\(\)/);
   assert.match(fullProduct, /if \(!isCurrent\(\)\) \{ overlay\.classList\.remove\('show'\); return; \}/);
 });
+
+test('campaign resume candidates compare server and local timestamps as dates', () => {
+  const main = read('static/app/main.js');
+  assert.match(main, /function campaignProgressTime\(save\)/);
+  assert.match(main, /Date\.parse\(normalized\)/);
+  assert.match(main, /candidates\.sort\(\(a, b\) => campaignProgressTime\(b\) - campaignProgressTime\(a\)\)/);
+  assert.doesNotMatch(main, /localeCompare\(String\(a\.serverUpdatedAt \|\| a\.clientUpdatedAt/);
+});
+
+test('campaign save-exit clears and persists the local session before closing', () => {
+  const main = read('static/app/main.js');
+  const campaign = read('static/app/campaign.js');
+  assert.match(main, /function campaignCtx\(\) \{[\s\S]*persistSave,/);
+  assert.match(campaign, /const \{ data, SAVE, audio, ensureOverlay, persistSave \} = ctx;/);
+  assert.match(campaign, /SAVE\.campaignSession = null;\s*persistSave\?\.\(\);/);
+});

@@ -189,12 +189,12 @@ function renderLevelSelect() {
   home.innerHTML = `
     <h1 class="home-title">🎓 学霸奇遇记</h1>
     <div class="campaign-entry">
-      <button id="btn-campaign" class="btn-start campaign">🪐 进入知识战场</button>
-      <button id="btn-report" class="btn-mini campaign-report">📊 家长日报</button>
-      <button id="btn-atlas" class="btn-mini">🐲 图鉴</button>
-      <button id="btn-bounty" class="btn-mini">🎯 悬赏</button>
-      <button id="btn-growth" class="btn-mini">🌱 成长</button>
-      <button id="btn-family" class="btn-mini">💌 家庭</button>
+      <button id="btn-campaign" class="btn-start campaign" data-campaign-action="campaign">🪐 进入知识战场</button>
+      <button id="btn-report" class="btn-mini campaign-report" data-campaign-action="report">📊 家长日报</button>
+      <button id="btn-atlas" class="btn-mini" data-campaign-action="atlas">🐲 图鉴</button>
+      <button id="btn-bounty" class="btn-mini" data-campaign-action="bounty">🎯 悬赏</button>
+      <button id="btn-growth" class="btn-mini" data-campaign-action="growth">🌱 成长</button>
+      <button id="btn-family" class="btn-mini" data-campaign-action="family">💌 家庭</button>
     </div>
     <div class="ls-row"><span>年级</span>${[1,2,3,4,5,6].map(g => btn('g', g, '年级' + g, sel.grade === g, false)).join('')}</div>
     <div class="ls-row"><span>科目</span>${SUBJECTS.map(s => btn('s', s.key, s.icon + ' ' + s.label, sel.subject === s.key, !isSubjectAvailable(sel.grade, s.key))).join('')}</div>
@@ -223,12 +223,8 @@ function renderLevelSelect() {
     });
   });
   $('#btn-start').addEventListener('click', () => { audio.sfxLevelUp(); startLevel(); });
-  $('#btn-campaign')?.addEventListener('click', () => { audio.sfxLevelUp(); openCampaignMapUI(campaignCtx()); });
-  $('#btn-report')?.addEventListener('click', () => { audio.sfxClick(); openDailyReportUI(campaignCtx()); });
-  $('#btn-atlas')?.addEventListener('click', () => { audio.sfxClick(); openMonsterAtlas(campaignCtx()); });
-  $('#btn-bounty')?.addEventListener('click', () => { audio.sfxClick(); openBountyBoard(campaignCtx()); });
-  $('#btn-growth')?.addEventListener('click', () => { audio.sfxClick(); openGrowthCenter(campaignCtx()); });
-  $('#btn-family')?.addEventListener('click', () => { audio.sfxClick(); openFamilyCenter(campaignCtx()); });
+  const campaignEntry = home.querySelector('.campaign-entry');
+  if (campaignEntry) campaignEntry.addEventListener('click', handleCampaignEntryClick);
 
   // 道具槽位点击：移除已激活
   home.querySelectorAll('.it-slot').forEach(s => s.addEventListener('click', () => {
@@ -356,6 +352,20 @@ function openShop() {
 }
 
 // ---------- 知识战场入口上下文 ----------
+function handleCampaignEntryClick(e) {
+  const btn = e.target.closest('[data-campaign-action]');
+  if (!btn) return;
+  const action = btn.dataset.campaignAction;
+  const ctx = campaignCtx();
+  if (action === 'campaign') { audio.sfxLevelUp(); openCampaignMapUI(ctx); return; }
+  audio.sfxClick();
+  if (action === 'report') openDailyReportUI(ctx);
+  else if (action === 'atlas') openMonsterAtlas(ctx);
+  else if (action === 'bounty') openBountyBoard(ctx);
+  else if (action === 'growth') openGrowthCenter(ctx);
+  else if (action === 'family') openFamilyCenter(ctx);
+}
+
 function campaignCtx() {
   return {
     data, SAVE, audio, toast, ensureOverlay,

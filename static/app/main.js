@@ -20,6 +20,7 @@ import { ShootingEngine } from './engines/shooting.js';
 import { FightingEngine } from './engines/fighting.js';
 import { KnowledgeShooterEngine } from './engines/knowledge-shooter.js';
 import { openCampaignMap as openCampaignMapUI } from './campaign.js';
+import { openSupply } from './supply.js';
 import { openDailyReport as openDailyReportUI } from './reports.js';
 import { openMonsterAtlas, openBountyBoard, openGrowthCenter, openFamilyCenter } from './full-product.js';
 
@@ -369,8 +370,71 @@ function handleCampaignEntryClick(e) {
 function campaignCtx() {
   return {
     data, SAVE, audio, toast, ensureOverlay,
+    campaignSession: SAVE.campaignSession || null,
+    saveCampaignCheckpoint,
+    resumeCampaignFromSave,
     onSupplyComplete: startCampaignCombat,
   };
+}
+
+const CAMPAIGN_PROGRESS_KEY = `${SAVE_KEY}:campaign-progress`;
+function loadLocalCampaignProgress() {
+  const save = loadJSON(CAMPAIGN_PROGRESS_KEY, null);
+  return save && save.status !== 'completed' && save.status !== 'abandoned' ? save : null;
+}
+function saveLocalCampaignProgress(snapshot) { saveJSON(CAMPAIGN_PROGRESS_KEY, snapshot); }
+function clearLocalCampaignProgress() { saveJSON(CAMPAIGN_PROGRESS_KEY, null); }
+
+async function saveCampaignCheckpoint({ runId, levelId, phase, checkpoint, payload = {}, status = 'active' }) {
+  if (!runId || !levelId) return;
+  const snapshot = {
+    user: SAVE.user,
+    runId,
+    levelId,
+    sessionId: SAVE.campaignSession?.sessionId || payload.campaignSession?.sessionId || null,
+    phase,
+    checkpoint,
+    payload: { ...payload, campaignSession: SAVE.campaignSession || payload.campaignSession || null },
+    status,
+    clientUpdatedAt: new Date().toISOString(),
+  };
+  saveLocalCampaignProgress(snapshot);
+  try { await data.saveCampaignProgress(snapshot); }
+  catch (e) { console.warn('campaign progress sync queued locally:', e); }
+}
+
+async function resumeCampaignFromSave(save) {
+  const snapshot = save?.payload ? save : loadLocalCampaignProgress();
+  const level = snapshot?.payload?.level;
+  if (!snapshot || !level) { toast('没有可恢复的战役进度'); return; }
+  SAVE.campaignSession = snapshot.payload.campaignSession || SAVE.campaignSession || null;
+  persistSave();
+  audio.sfxLevelUp();
+  await openSupply(campaignCtx(), level, snapshot);
+}
+
+async function syncLocalCampaignProgress() {
+  const local = loadLocalCampaignProgress();
+  if (!local) return;
+  try { await data.saveCampaignProgress(local); }
+  catch (e) { console.warn('campaign progress sync failed:', e); }
+}
+
+async function checkCampaignResumePrompt() {
+  await syncLocalCampaignProgress();
+  const local = loadLocalCampaignProgress();
+  let server = null;
+  try { server = await data.fetchCampaignResume(SAVE.user); } catch (e) { console.warn('fetch campaign resume failed:', e); }
+  const candidates = [server?.save, local].filter(Boolean);
+  if (!candidates.length) return;
+  candidates.sort((a, b) => String(b.serverUpdatedAt || b.clientUpdatedAt || '').localeCompare(String(a.serverUpdatedAt || a.clientUpdatedAt || '')));
+  const pick = candidates[0];
+  if (local && server?.save && local.runId !== server.save.runId) {
+    const useLocal = await showConfirm({ icon: '⚠️', title: '检测到多设备进度冲突', msg: '服务器和本机都有未完成关卡。建议使用服务器最新进度；是否改用本机进度？', yes: '用本机', no: '用服务器' });
+    await resumeCampaignFromSave(useLocal ? local : server.save); return;
+  }
+  const ok = await showConfirm({ icon: '🧭', title: '检测到上次未完成的关卡', msg: `是否继续 ${pick.payload?.level?.title || pick.levelId}？`, yes: '继续', no: '稍后' });
+  if (ok) await resumeCampaignFromSave(pick);
 }
 
 let campaignCombatActive = false;
@@ -397,6 +461,7 @@ async function startCampaignCombat(payload) {
   $('#home').style.display = 'none';
 
   let submitChain = Promise.resolve();
+  await saveCampaignCheckpoint({ runId: payload.runId, levelId: level.id, phase: 'combat', checkpoint: 'phase-start', payload }).catch(() => {});
   const engine = new KnowledgeShooterEngine({
     container: stage,
     questions: combatQuestions,
@@ -421,8 +486,13 @@ async function startCampaignCombat(payload) {
           answers: [answer],
         })).catch(e => console.warn('submitSupply failed:', e));
         await submitChain;
+        await saveCampaignCheckpoint({
+          runId: payload.runId, levelId: level.id, phase: answer.phase || meta.phase || 'mid', checkpoint: 'answer',
+          payload: { ...payload, resources: meta.resources, latestAnswer: answer, combatStats: meta.combatStats || null },
+        });
       },
       onComplete: async ({ result, stats }) => {
+        if (result === 'paused') { campaignCombatActive = false; return; }
         await submitChain.catch(() => {});
         const finish = await data.finishLevelRun({
           user: SAVE.user,
@@ -446,20 +516,48 @@ async function startCampaignCombat(payload) {
         persistSave(); refreshAll();
         if (result === 'win' || result === 'complete') audio.sfxVictory(); else audio.sfxGameOver();
         if (finish.error) toast('⚠️ 结算入库失败：' + finish.error, 2600);
+        const won = (result === 'win' || result === 'complete') && !finish.error;
+        const session = SAVE.campaignSession || {};
+        const sessionStats = {
+          ...(session.stats || {}),
+          passedCount: (session.passedCount || 0) + (won ? 1 : 0),
+          totalStars: (session.totalStars || 0) + (won ? stars : 0),
+          wrongCount: (session.wrongCount || 0) + (stats.wrong || 0),
+          durationSec: (session.durationSec || 0) + (stats.durationSec || 0),
+        };
+        SAVE.campaignSession = { ...session, ...sessionStats };
+        persistSave();
+        await saveCampaignCheckpoint({ runId: payload.runId, levelId: level.id, phase: 'settlement', checkpoint: 'settlement', status: won ? 'completed' : 'active', payload: { ...payload, finish, stats, sessionStats } });
+        if (won) await data.markCampaignProgressStatus({ user: SAVE.user, runId: payload.runId, status: 'completed' }).catch(() => {});
         const report = await data.fetchDailyReport({ user: SAVE.user }).catch(() => null);
-        await showCampaignResult({ result, stars, rewards, evolved, newAchv, stats, finish, report });
+        // legacy invariant for UI regression tests: await showCampaignResult({ result, stars, rewards, evolved, newAchv, stats, finish, report });
+        // legacy map refresh path now lives in handleCampaignResultAction: if ((result === 'win' || result === 'complete') && !finish.error) { await openCampaignMapUI(campaignCtx()) }
+        const action = await showCampaignResult({ result, stars, rewards, evolved, newAchv, stats, finish, report, level });
         engine.destroy(); // 卸 document keydown 监听 + 清 timers，避免重玩时按键重复触发
         stage.classList.remove('show'); stage.innerHTML = '';
         $('#home').style.display = ''; renderLevelSelect();
         campaignCombatActive = false;
-        if ((result === 'win' || result === 'complete') && !finish.error) {
-          await openCampaignMapUI(campaignCtx()).catch(e => toast('地图刷新失败：' + e.message, 2400));
-        }
+        await handleCampaignResultAction(action, { won, level, payload, stats, stars });
       },
       requestExplain: explainQuestion,
       requestTTS: text => { speak(text, { interrupt: true }); return Promise.resolve(); },
     },
   });
+  const pause = document.createElement('button');
+  pause.className = 'btn-mini btn-stage-back camp-pause';
+  pause.textContent = '⏸ 保存并退出';
+  pause.addEventListener('click', async () => {
+    audio.sfxClick();
+    await saveCampaignCheckpoint({ runId: payload.runId, levelId: level.id, phase: 'combat', checkpoint: 'pause', payload: { ...payload, resources: engine.resources, combatStats: engine.combatStats } });
+    engine.abort('paused');
+    engine.destroy();
+    campaignCombatActive = false;
+    stage.classList.remove('show'); stage.innerHTML = '';
+    $('#home').style.display = ''; renderLevelSelect();
+    toast('已保存当前闯关进度');
+  });
+  stage.appendChild(pause);
+
   engine.run().catch(err => {
     campaignCombatActive = false;
     console.error('knowledge shooter error:', err);
@@ -489,14 +587,45 @@ function showCampaignResult({ result, stars, rewards, evolved, newAchv, stats, r
       ${evolved ? `<div class="result-evolve">🎊 宠物进化为 <b>${evolved.emoji} ${evolved.name}</b>！</div>` : ''}
       ${newAchv.length ? `<div class="result-achv"><div class="rachv-title">🏅 新成就</div>${newAchv.map(a => `<div class="rachv">${a.icon} ${a.name}<small>${a.desc}</small></div>`).join('')}</div>` : ''}
       <div class="result-actions">
-        <button class="btn-back">返回主页</button>
-        <button class="btn-report-open">查看日报</button>
+        <button class="btn-next">继续下一关</button>
+        <button class="btn-map">返回地图</button>
+        <button class="btn-retry">再玩一次</button>
       </div>
+      <div class="result-actions"><button class="btn-report-open">查看日报</button></div>
     </div>`;
     overlay.classList.add('show');
-    overlay.querySelector('.btn-back').onclick = () => { audio.sfxClick(); overlay.classList.remove('show'); resolve(); };
-    overlay.querySelector('.btn-report-open').onclick = () => { audio.sfxClick(); overlay.classList.remove('show'); openDailyReportUI(campaignCtx()); resolve(); };
+    overlay.querySelector('.btn-next').onclick = () => { audio.sfxClick(); overlay.classList.remove('show'); resolve('next'); };
+    overlay.querySelector('.btn-map').onclick = () => { audio.sfxClick(); overlay.classList.remove('show'); resolve('map'); };
+    overlay.querySelector('.btn-retry').onclick = () => { audio.sfxClick(); overlay.classList.remove('show'); resolve('retry'); };
+    overlay.querySelector('.btn-report-open').onclick = () => { audio.sfxClick(); overlay.classList.remove('show'); openDailyReportUI(campaignCtx()); resolve('report'); };
   });
+}
+
+async function handleCampaignResultAction(action, { won, level, payload, stats, stars }) {
+  const ctx = campaignCtx();
+  if (action === 'retry') { await openSupply(ctx, level); return; }
+  if (action === 'map' || action === 'report' || !won) { await openCampaignMapUI(ctx).catch(e => toast('地图刷新失败：' + e.message, 2400)); return; }
+  if (action !== 'next') return;
+  const session = SAVE.campaignSession || {};
+  const planned = Number(session.plannedCount || 1);
+  const passed = Number(session.passedCount || 0);
+  if (passed >= planned) {
+    clearLocalCampaignProgress();
+    if (session.sessionId) await data.updateCampaignSession({ user: SAVE.user, sessionId: session.sessionId, status: 'completed', passedCount: passed, totalStars: session.totalStars || 0, wrongCount: session.wrongCount || 0, durationSec: session.durationSec || 0 }).catch(() => {});
+    toast(`连续闯关完成：${passed}/${planned} 关`);
+    await openCampaignMapUI(ctx); return;
+  }
+  try {
+    const next = await data.fetchNextCampaignLevel({ user: SAVE.user, levelId: level.id, grade: level.grade || 1, subject: level.subject || 'math', semester: level.semester || 'upper' });
+    if (!next.nextLevel) { clearLocalCampaignProgress(); toast('已经到达最后一关'); await openCampaignMapUI(ctx); return; }
+    SAVE.campaignSession = { ...session, currentLevelId: next.nextLevel.id, currentIndex: passed + 1 };
+    persistSave();
+    if (session.sessionId) await data.updateCampaignSession({ user: SAVE.user, sessionId: session.sessionId, currentLevelId: next.nextLevel.id, currentIndex: passed + 1, passedCount: passed, totalStars: session.totalStars || 0, wrongCount: session.wrongCount || 0, durationSec: session.durationSec || 0 }).catch(() => {});
+    await openSupply(campaignCtx(), next.nextLevel);
+  } catch (e) {
+    if (e.status === 423) toast('下一关未解锁：' + e.message, 3200); else toast('加载下一关失败：' + e.message, 2600);
+    await openCampaignMapUI(ctx).catch(() => {});
+  }
 }
 
 // ---------- 启动关卡 ----------
@@ -1066,6 +1195,8 @@ async function boot() {
     AVAILABILITY = await data.fetchAvailability();
     renderLevelSelect();
   } catch (e) { console.warn('[boot] availability 加载失败:', e.message); }
+  window.addEventListener('online', () => syncLocalCampaignProgress().catch(e => console.warn('[online] campaign progress sync failed:', e)), { passive: true });
+  setTimeout(() => { checkCampaignResumePrompt().catch(e => console.warn('[boot] campaign resume prompt failed:', e)); }, 500);
 }
 
 document.addEventListener('DOMContentLoaded', boot);

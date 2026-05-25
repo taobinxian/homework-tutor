@@ -49,6 +49,7 @@ const wrongbookApi = require('./lib/wrongbook-api');
 const questionsApi  = require('./lib/questions-api');
 const campaignApi   = require('./lib/campaign-api');
 const levelApi      = require('./lib/level-api');
+const progressApi   = require('./lib/progress-api');
 const reportsApi    = require('./lib/reports-api');
 const freePracticeApi = require('./lib/free-practice-api');
 const fullProductApi = require('./lib/full-product-api');
@@ -471,6 +472,32 @@ const server = http.createServer((req,res)=>{
     if(req.method==='GET' && pathname==='/api/campaign/level'){
       const r=campaignApi.detailHandler(db,query); return writeJSON(r.status,r.body);
     }
+    if(req.method==='GET' && pathname==='/api/campaign/next'){
+      const r=progressApi.getNextLevel(db,query); return writeJSON(r.status,r.body);
+    }
+    if(req.method==='GET' && pathname==='/api/campaign/progress/resume'){
+      const r=progressApi.resumeHandler(db,query); return writeJSON(r.status,r.body);
+    }
+    if(req.method==='POST' && pathname==='/api/campaign/session/start'){
+      return readBody(req).then(buf=>progressApi.startSessionHandler(db,JSON.parse(buf.toString('utf-8')||'{}')))
+        .then(r=>writeJSON(r.status,r.body)).catch(e=>writeJSON(400,{error:e.message}));
+    }
+    if(req.method==='POST' && pathname==='/api/campaign/session/update'){
+      return readBody(req).then(buf=>progressApi.updateSessionHandler(db,JSON.parse(buf.toString('utf-8')||'{}')))
+        .then(r=>writeJSON(r.status,r.body)).catch(e=>writeJSON(400,{error:e.message}));
+    }
+    if(req.method==='POST' && pathname==='/api/campaign/progress/save'){
+      return readBody(req).then(buf=>progressApi.saveProgressHandler(db,JSON.parse(buf.toString('utf-8')||'{}')))
+        .then(r=>writeJSON(r.status,r.body)).catch(e=>writeJSON(400,{error:e.message}));
+    }
+    if(req.method==='POST' && pathname==='/api/campaign/progress/status'){
+      return readBody(req).then(buf=>progressApi.markSaveStatusHandler(db,JSON.parse(buf.toString('utf-8')||'{}')))
+        .then(r=>writeJSON(r.status,r.body)).catch(e=>writeJSON(400,{error:e.message}));
+    }
+    if(req.method==='POST' && pathname==='/api/campaign/progress/resolve-conflict'){
+      return readBody(req).then(buf=>progressApi.resolveConflictHandler(db,JSON.parse(buf.toString('utf-8')||'{}')))
+        .then(r=>writeJSON(r.status,r.body)).catch(e=>writeJSON(400,{error:e.message}));
+    }
   }
   if(pathname.startsWith('/api/levels') && db){
     const writeJSON=(status,body)=>{res.writeHead(status,{...CORS,'Content-Type':'application/json; charset=utf-8'});res.end(JSON.stringify(body));};
@@ -583,7 +610,7 @@ const server = http.createServer((req,res)=>{
   }
 
   res.writeHead(404,{...CORS,'Content-Type':'text/plain; charset=utf-8'});
-  res.end('404\n可用路由：GET /、GET /app、POST /v1/chat/completions、GET /tts、/api/questions、/api/campaign/map、/api/campaign/level、/api/levels/start、/api/levels/supply/submit、/api/levels/finish、/api/free-practice/finish、/api/reports/daily、/api/reports/weekly、/api/reports/review-level、/api/monsters、/api/bounties、/api/growth/summary、/api/map-events、/api/family/*、/api/analytics/events、/api/wrongbook\n');
+  res.end('404\n可用路由：GET /、GET /app、POST /v1/chat/completions、GET /tts、/api/questions、/api/campaign/map、/api/campaign/level、/api/campaign/next、/api/campaign/progress/*、/api/campaign/session/*、/api/levels/start、/api/levels/supply/submit、/api/levels/finish、/api/free-practice/finish、/api/reports/daily、/api/reports/weekly、/api/reports/review-level、/api/monsters、/api/bounties、/api/growth/summary、/api/map-events、/api/family/*、/api/analytics/events、/api/wrongbook\n');
 });
 
 server.listen(PORT,BIND,()=>{

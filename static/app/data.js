@@ -90,6 +90,35 @@ export async function finishLevelRun(payload) {
 
 export const finishCampaignLevel = finishLevelRun;
 
+export async function fetchNextCampaignLevel({ user = 'default', levelId, grade = 1, subject = 'math', semester = 'upper' } = {}) {
+  const params = new URLSearchParams({ user, levelId, grade: String(grade), subject, semester });
+  return jsonRequest(`${BASE}/api/campaign/next?${params}`);
+}
+
+export async function startCampaignSession(payload = {}) {
+  return jsonRequest(`${BASE}/api/campaign/session/start`, { method: 'POST', body: JSON.stringify(payload) });
+}
+
+export async function updateCampaignSession(payload = {}) {
+  return jsonRequest(`${BASE}/api/campaign/session/update`, { method: 'POST', body: JSON.stringify(payload) });
+}
+
+export async function saveCampaignProgress(payload = {}) {
+  return jsonRequest(`${BASE}/api/campaign/progress/save`, { method: 'POST', body: JSON.stringify(payload), timeoutMs: 5000 });
+}
+
+export async function markCampaignProgressStatus(payload = {}) {
+  return jsonRequest(`${BASE}/api/campaign/progress/status`, { method: 'POST', body: JSON.stringify(payload), timeoutMs: 5000 });
+}
+
+export async function fetchCampaignResume(user = 'default') {
+  return jsonRequest(`${BASE}/api/campaign/progress/resume?user=${encodeURIComponent(user || 'default')}`);
+}
+
+export async function resolveCampaignProgressConflict(payload = {}) {
+  return jsonRequest(`${BASE}/api/campaign/progress/resolve-conflict`, { method: 'POST', body: JSON.stringify(payload) });
+}
+
 export async function fetchDailyReport({ user = 'default', date } = {}) {
   const params = new URLSearchParams({ user });
   if (date) params.set('date', date);

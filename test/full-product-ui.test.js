@@ -34,3 +34,16 @@ test('campaign completion refreshes map after result dialog closes', () => {
   assert.match(src, /await showCampaignResult\(\{ result, stars, rewards, evolved, newAchv, stats, finish, report \}\);/);
   assert.match(src, /if \(\(result === 'win' \|\| result === 'complete'\) && !finish\.error\) \{\s*await openCampaignMapUI\(campaignCtx\(\)\)/s);
 });
+
+test('home campaign entry buttons use delegated actions for all product panels', () => {
+  const src = read('static/app/main.js');
+  for (const action of ['campaign', 'report', 'atlas', 'bounty', 'growth', 'family']) {
+    assert.match(src, new RegExp(`data-campaign-action="${action}"`));
+  }
+  assert.match(src, /campaignEntry\.addEventListener\('click', handleCampaignEntryClick\)/);
+  assert.match(src, /action === 'report'[\s\S]*openDailyReportUI\(ctx\)/);
+  assert.match(src, /action === 'atlas'[\s\S]*openMonsterAtlas\(ctx\)/);
+  assert.match(src, /action === 'bounty'[\s\S]*openBountyBoard\(ctx\)/);
+  assert.match(src, /action === 'growth'[\s\S]*openGrowthCenter\(ctx\)/);
+  assert.match(src, /action === 'family'[\s\S]*openFamilyCenter\(ctx\)/);
+});

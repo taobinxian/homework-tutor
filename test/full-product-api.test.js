@@ -16,7 +16,7 @@ function seedWrongs(db, user = 'u') {
 }
 
 function seedCampaignLevel(db) {
-  db.prepare(`INSERT INTO campaign_levels (id,chapter_id,grade,subject,semester,topic,title,level_type,difficulty,question_count,order_no,config_json,reward_json,unlock_json,enabled)
+  db.prepare(`INSERT OR IGNORE INTO campaign_levels (id,chapter_id,grade,subject,semester,topic,title,level_type,difficulty,question_count,order_no,config_json,reward_json,unlock_json,enabled)
     VALUES ('review-1','c1',1,'math','upper','进位加法','进位加法复习','review',1,5,1,'{}','{}','{}',1)`).run();
 }
 
@@ -80,11 +80,11 @@ test('real finished run completes bounty and repeat complete/claim remain idempo
 });
 
 
-test('claimed bounty can generate a fresh active bounty for a later weak cycle', () => {
+test('claimed bounty can generate, complete, and claim a fresh later weak cycle', () => {
   const db = memdb();
   seedWrongs(db);
   const [first] = full.generateBounties(db, { user:'u' });
-  submitRealRun(db);
+  submitRealRun(db, { runId:'run-real-1' });
   const claim = full.claimBountyHandler(db, first.id, { user:'u' });
   assert.equal(claim.status, 200);
   assert.equal(db.prepare('SELECT status FROM bounty_tasks WHERE id=?').get(first.id).status, 'claimed');
@@ -93,7 +93,16 @@ test('claimed bounty can generate a fresh active bounty for a later weak cycle',
   const [second] = full.generateBounties(db, { user:'u', source:'repeat-cycle' });
   assert.equal(second.status, 'active');
   assert.notEqual(second.id, first.id);
-  assert.equal(db.prepare("SELECT COUNT(*) AS c FROM bounty_tasks WHERE user='u' AND topic='进位加法'").get().c, 2);
+  assert.equal(second.cycle, first.cycle + 1);
+
+  const finish = submitRealRun(db, { runId:'run-real-2' });
+  assert.equal(finish.status, 200);
+  assert.ok(finish.body.bountySettlements.some(x => x.bounty.id === second.id && x.bounty.status === 'completed'));
+  const secondClaim = full.claimBountyHandler(db, second.id, { user:'u' });
+  assert.equal(secondClaim.status, 200);
+  assert.equal(secondClaim.body.ok, true);
+
+  assert.equal(db.prepare("SELECT COUNT(*) AS c FROM bounty_tasks WHERE user='u' AND topic='进位加法' AND status='claimed'").get().c, 2);
 });
 
 test('growth summary creates mastery power, starter collection and knowledge base', () => {
@@ -125,6 +134,10 @@ test('map events and family interactions close local loops', () => {
 
   const boss = full.createParentBossHandler(db, { user:'u', topic:'退位减法', q:'9-4=?', options:['4','5'], answer:'5' });
   assert.equal(boss.status, 200);
+  assert.equal(Object.hasOwn(boss.body.boss, 'answer'), false);
+  const listedBosses = full.listParentBossHandler(db, { user:'u' });
+  assert.equal(listedBosses.status, 200);
+  assert.equal(Object.hasOwn(listedBosses.body[0], 'answer'), false);
   const finish = full.finishParentBossHandler(db, boss.body.boss.id, { user:'u', userAnswer:'5' });
   assert.equal(finish.body.correct, true);
   assert.ok(db.prepare("SELECT COUNT(*) AS c FROM praise_cards WHERE user='u'").get().c >= 2);

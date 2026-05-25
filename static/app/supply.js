@@ -96,7 +96,12 @@ export async function openSupply(ctx, level) {
       <div class="camp-desc">补给记录已写入后端，掌握度已更新。下一步将用这些资源进入 KnowledgeShooter 战斗。</div>
       <button class="btn-start supply-battle">进入战斗</button>
     </div>`;
-    body.querySelector('.supply-battle').onclick = () => {
+    body.querySelector('.supply-battle').onclick = (e) => {
+      const btn = e.currentTarget;
+      if (btn.dataset.busy === '1') return;
+      btn.dataset.busy = '1';
+      btn.disabled = true;
+      btn.textContent = '进入中…';
       audio.sfxLevelUp();
       overlay.classList.remove('show');
       ctx.onSupplyComplete?.({ ...payload, openingAnswers: answers, resources });
